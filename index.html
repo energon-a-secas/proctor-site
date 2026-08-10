@@ -21,7 +21,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="https://proctor.neorgon.com/og-preview.jpg">
-  <meta name="neo-version" content="1.0.0">
+  <meta name="neo-version" content="1.1.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
   <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
@@ -196,6 +196,36 @@
             <li>YAML works too: same fields, plain indentation only (no anchors, no inline maps)</li>
           </ul>
         </div>
+      </section>
+
+      <!-- ── Review ──────────────────────────────────────────── -->
+      <section class="section" id="view-review" aria-labelledby="review-title" hidden>
+        <div class="proctor-runbar">
+          <div class="proctor-runbar__info">
+            <h2 class="proctor-runbar__title" id="review-title"></h2>
+            <span class="proctor-chip">Review</span>
+          </div>
+          <span class="proctor-progress-label" id="reviewCount"></span>
+        </div>
+
+        <div class="toolbar proctor-review-controls">
+          <label class="proctor-toggle"><input type="checkbox" id="reviewShowAnswers" checked> Answers + why</label>
+          <label class="proctor-toggle"><input type="checkbox" id="reviewShowNotes"> Notes</label>
+          <label class="proctor-perpage">Per page
+            <select id="reviewPerPage">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="0">All</option>
+            </select>
+          </label>
+          <button class="btn btn--primary btn--sm" id="reviewPdfBtn" title="Opens the print dialog — choose Save as PDF">Export PDF</button>
+          <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
+        </div>
+
+        <div id="reviewList"></div>
+        <div class="proctor-pager" id="reviewPager"></div>
+        <p class="proctor-keys proctor-review-keys">Keys: <kbd>←</kbd><kbd>→</kbd> page · PDF export prints every question, not just this page</p>
       </section>
 
     </div>

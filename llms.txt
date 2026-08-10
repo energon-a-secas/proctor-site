@@ -59,6 +59,13 @@ with "- ", "key: value" maps, quoted or plain scalars, inline [a, b] arrays, and
 "|" block scalars. NOT supported: anchors/aliases, flow maps {a: b}, multi-doc
 "---", tabs. When in doubt, emit JSON — it is the canonical format.
 
+## Review mode
+
+The Review button renders the entire test at once: answer key with the ✓ option,
+the explanation under every question, personal notes, and a paginator (5/10/20/all
+per page). Export PDF prints the full test — answers, corrections, and notes —
+via the browser's print dialog, regardless of the on-screen page.
+
 ## Loading
 
 - Drag the file onto the page, or paste the document via the Paste dialog

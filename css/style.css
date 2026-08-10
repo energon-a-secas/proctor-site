@@ -828,3 +828,137 @@ button:active,
   .proctor-mode-cards { grid-template-columns: 1fr; }
   .proctor-score { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
 }
+
+/* ── Review mode ─────────────────────────────────────────────── */
+
+/* Proctor reads better wide: review items and option rows use the room, and
+   1150px stays a text-friendly measure — wider than the 900px template default,
+   deliberately short of full-stretch. */
+.container { max-width: 1150px; }
+
+.proctor-review-controls { margin-bottom: var(--space-4); align-items: center; }
+.proctor-perpage {
+  display: flex; align-items: center; gap: var(--space-2);
+  color: var(--text-secondary); font-size: var(--text-sm);
+}
+.proctor-perpage select {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 4px 8px;
+}
+
+.proctor-review-item { margin-bottom: var(--space-3); }
+.proctor-review-item--offpage { display: none; }
+.proctor-review-item__head {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.proctor-review-item__type {
+  color: var(--text-muted); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.proctor-review-item__prompt { font-size: var(--text-base); line-height: 1.5; margin-bottom: var(--space-3); }
+.proctor-review-opts { display: flex; flex-direction: column; gap: var(--space-1); }
+.proctor-review-opt {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+.proctor-review-opt--correct {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--text-primary);
+}
+.proctor-review-accept { color: var(--text-secondary); font-size: var(--text-sm); }
+.proctor-review-item__why {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+.proctor-review-note { margin-top: var(--space-3); }
+.proctor-note-input {
+  width: 100%;
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+.proctor-note-input:focus { outline: none; border-color: var(--accent); }
+.proctor-note-print { display: none; }
+.proctor-note-print--always {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.proctor-pager {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+.proctor-pager__num {
+  min-width: 34px; height: 34px;
+  display: grid; place-items: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.proctor-pager__num--current { outline: 2px solid var(--accent); color: var(--text-primary); }
+
+/* ── Print = the PDF export ──────────────────────────────────
+   window.print() + "Save as PDF". Every question prints regardless of the
+   on-screen page; notes print as text, not as form fields. */
+@media print {
+  body { background: #fff; color: #000; display: block; }
+  .header-bar, .neo-footer, .proctor-review-controls, .proctor-pager,
+  .proctor-review-keys, .skip-link, #view-library, #view-runner,
+  #view-results, #view-format, .modal { display: none !important; }
+  #view-review { display: block !important; }
+  .proctor-runbar__title { color: #000; font-size: 18pt; }
+  .proctor-chip, .proctor-progress-label { color: #444; border-color: #bbb; }
+  .proctor-review-item {
+    display: block !important;          /* off-page items print too */
+    break-inside: avoid;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    color: #000;
+    padding: 12pt;
+    margin-bottom: 10pt;
+  }
+  .proctor-review-item__prompt { color: #000; }
+  .proctor-review-opt { color: #333; border-color: #ddd; }
+  .proctor-review-opt--correct {
+    color: #000; border-color: #16a34a; background: #f0fdf4;
+    font-weight: 600;
+  }
+  .proctor-review-item__why { color: #333; border-top-color: #ddd; }
+  .proctor-review-item__type, .proctor-review__n { color: #666; }
+  .proctor-review-accept { color: #333; }
+  .proctor-note-input { display: none; }
+  .proctor-note-print {
+    display: block;
+    margin-top: 6pt;
+    padding: 6pt 8pt;
+    border-left: 3px solid #999;
+    color: #333;
+    font-style: italic;
+  }
+  .proctor-note-print:empty { display: none; }
+}

@@ -48,7 +48,9 @@ spec ships at `/llms.txt` and behind the Format button.
 - **JSON and YAML** -- built-in YAML subset parser, no dependencies, JSON is canonical
 - **LLM-ready format** -- one-click prompt copy; paste the model's output straight back in
 - **Share links** -- a whole test travels in the URL fragment, nothing touches a server
-- **Local by design** -- tests, sessions, and history live in localStorage only
+- **Review mode** -- every question fully rendered with the answer key and the why, paginated at your pace (5/10/20/all per page)
+- **Notes and PDF** -- annotate any question with your own notes, then export the whole test (answers, corrections, notes) to PDF via the print dialog
+- **Local by design** -- tests, sessions, notes, and history live in localStorage only
 
 ---
 

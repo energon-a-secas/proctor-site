@@ -1,12 +1,12 @@
 // ── Event wiring + session lifecycle ─────────────────────────
 
 import { $, showToast, shuffled, copyText, b64urlEncode } from './utils.js';
-import { state, saveState, addTest, removeTest, getTest, recordResult } from './state.js';
+import { state, saveState, addTest, removeTest, getTest, recordResult, saveNote } from './state.js';
 import { parseTest } from './parser.js';
 import { isAnswered } from './grader.js';
 import {
   showView, renderLibrary, renderRunner, renderQuestion, renderPalette,
-  renderResults, renderTimer, FORMAT_EXAMPLE,
+  renderResults, renderTimer, FORMAT_EXAMPLE, review, renderReview,
 } from './render.js';
 import { startTimer, stopTimer } from './timer.js';
 
@@ -188,6 +188,7 @@ export function initEvents() {
     if (!card || !action) return;
     const id = card.dataset.testId;
     if (action === 'start') openModeModal(id);
+    if (action === 'review') openReview(id);
     if (action === 'resume') resumeSession();
     if (action === 'discard') quitSession();
     if (action === 'remove') { removeTest(id); renderLibrary(); }
@@ -263,8 +264,48 @@ export function initEvents() {
   $('copySchemaBtn').addEventListener('click', () => copyText(FORMAT_EXAMPLE, 'Example JSON copied'));
   $('backFromFormatBtn').addEventListener('click', () => { showView('library'); });
 
+  // Review mode
+  $('reviewShowAnswers').addEventListener('change', (e) => {
+    state.review.showAnswers = e.target.checked; saveState(); renderReview();
+  });
+  $('reviewShowNotes').addEventListener('change', (e) => {
+    state.review.showNotes = e.target.checked; saveState(); renderReview();
+  });
+  $('reviewPerPage').addEventListener('change', (e) => {
+    state.review.perPage = parseInt(e.target.value, 10); review.page = 0; saveState(); renderReview();
+  });
+  $('reviewPager').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-page]');
+    if (!btn || btn.disabled) return;
+    const p = btn.dataset.page;
+    if (p === 'prev') review.page -= 1;
+    else if (p === 'next') review.page += 1;
+    else review.page = parseInt(p, 10);
+    renderReview();
+    $('reviewList').scrollIntoView({ block: 'start' });
+  });
+  $('reviewPdfBtn').addEventListener('click', () => window.print());
+  $('reviewBackBtn').addEventListener('click', () => { showView('library'); renderLibrary(); });
+  // Notes: save as typed (debounced), and mirror into the print-only div
+  let noteTimer = null;
+  $('reviewList').addEventListener('input', (e) => {
+    if (!e.target.classList.contains('proctor-note-input')) return;
+    const item = e.target.closest('[data-qid]');
+    const mirror = item.querySelector('.proctor-note-print');
+    if (mirror) mirror.textContent = e.target.value;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => saveNote(review.testId, item.dataset.qid, e.target.value), 400);
+  });
+
   // Keyboard
   document.addEventListener('keydown', onKey);
+}
+
+export function openReview(id) {
+  review.testId = id;
+  review.page = 0;
+  showView('review');
+  renderReview();
 }
 
 function selectOption(btn) {
@@ -308,6 +349,13 @@ function move(delta) {
 }
 
 function onKey(e) {
+  if (!$('view-review').hidden) {
+    const typing = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
+    if (typing) return;
+    if (e.key === 'ArrowLeft') $('reviewPager').querySelector('[data-page="prev"]')?.click();
+    if (e.key === 'ArrowRight') $('reviewPager').querySelector('[data-page="next"]')?.click();
+    return;
+  }
   const s = state.session;
   if (!s || $('view-runner').hidden) return;
   const typing = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';

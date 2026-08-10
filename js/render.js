@@ -1,11 +1,11 @@
 // ── DOM rendering for every view ─────────────────────────────
 
 import { $, escHtml } from './utils.js';
-import { state, getTest } from './state.js';
+import { state, getTest, getNote } from './state.js';
 import { gradeQuestion, isAnswered, correctText, responseText, summarize } from './grader.js';
 import { formatClock } from './timer.js';
 
-const VIEWS = ['library', 'runner', 'results', 'format'];
+const VIEWS = ['library', 'runner', 'results', 'format', 'review'];
 
 export function showView(name) {
   VIEWS.forEach((v) => { $(`view-${v}`).hidden = v !== name; });
@@ -27,6 +27,7 @@ function testCard(t, { sample = false } = {}) {
       <p class="proctor-testcard__meta">${meta}</p>
       <div class="toolbar">
         <button class="btn btn--primary btn--sm" data-action="start">Start</button>
+        <button class="btn btn--secondary btn--sm" data-action="review">Review</button>
         ${sample ? '' : `
           <button class="btn btn--ghost btn--sm" data-action="share">Copy link</button>
           <button class="btn btn--ghost btn--sm" data-action="remove" aria-label="Remove ${escHtml(t.title)}">Remove</button>`}
@@ -282,4 +283,77 @@ export const FORMAT_EXAMPLE = `{
 
 export function renderFormatView() {
   $('formatExample').textContent = FORMAT_EXAMPLE;
+}
+
+
+// ── Review mode: the whole test rendered, paginated, print-ready ──
+// Every question is in the DOM; pagination hides off-page items with a class
+// the print stylesheet unhides — so Export PDF always prints the full test.
+
+export const review = { testId: null, page: 0 };
+
+function reviewOptionRows(q) {
+  if (q.type === 'fill') {
+    return `<p class="proctor-review-accept">Accepted: <strong>${q.accept.map(escHtml).join('</strong> / <strong>')}</strong></p>`;
+  }
+  if (q.type === 'truefalse') {
+    return [true, false].map((val) => `
+      <div class="proctor-review-opt ${state.review.showAnswers && val === q.answer ? 'proctor-review-opt--correct' : ''}">
+        <span class="proctor-option__key">${val === q.answer && state.review.showAnswers ? '✓' : ''}</span>
+        <span>${val ? 'True' : 'False'}</span>
+      </div>`).join('');
+  }
+  return q.options.map((opt, i) => {
+    const isCorrect = q.type === 'single' ? i === q.answer : q.answers.includes(i);
+    const mark = state.review.showAnswers && isCorrect;
+    return `
+      <div class="proctor-review-opt ${mark ? 'proctor-review-opt--correct' : ''}">
+        <span class="proctor-option__key">${mark ? '✓' : String.fromCharCode(65 + i)}</span>
+        <span>${escHtml(opt)}</span>
+      </div>`;
+  }).join('');
+}
+
+export function renderReview() {
+  const entry = getTest(review.testId);
+  if (!entry) return;
+  const test = entry.doc || entry;
+  const { perPage, showAnswers, showNotes } = state.review;
+  const total = test.questions.length;
+  const pages = perPage > 0 ? Math.ceil(total / perPage) : 1;
+  if (review.page >= pages) review.page = pages - 1;
+
+  $('review-title').textContent = test.title;
+  $('reviewCount').textContent = `${total} questions`;
+  $('reviewShowAnswers').checked = showAnswers;
+  $('reviewShowNotes').checked = showNotes;
+  $('reviewPerPage').value = String(perPage);
+
+  $('reviewList').innerHTML = test.questions.map((q, i) => {
+    const page = perPage > 0 ? Math.floor(i / perPage) : 0;
+    const note = getNote(review.testId, q.id);
+    return `
+      <div class="card proctor-review-item ${page === review.page ? '' : 'proctor-review-item--offpage'}" data-qid="${escHtml(q.id)}">
+        <div class="proctor-review-item__head">
+          <span class="proctor-review__n">${i + 1}</span>
+          ${q.category ? `<span class="proctor-chip proctor-chip--category">${escHtml(q.category)}</span>` : ''}
+          <span class="proctor-review-item__type">${q.type}</span>
+        </div>
+        <p class="proctor-review-item__prompt">${escHtml(q.prompt)}</p>
+        <div class="proctor-review-opts">${reviewOptionRows(q)}</div>
+        ${showAnswers && q.explanation ? `<p class="proctor-review-item__why"><strong>Why:</strong> ${escHtml(q.explanation)}</p>` : ''}
+        ${showNotes ? `
+          <div class="proctor-review-note">
+            <textarea class="proctor-note-input" rows="2" placeholder="Your note for this question"
+                      aria-label="Note for question ${i + 1}">${escHtml(note)}</textarea>
+            <div class="proctor-note-print">${escHtml(note)}</div>
+          </div>` : (note ? `<div class="proctor-note-print proctor-note-print--always">${escHtml(note)}</div>` : '')}
+      </div>`;
+  }).join('');
+
+  $('reviewPager').innerHTML = pages <= 1 ? '' : `
+    <button class="btn btn--ghost btn--sm" data-page="prev" ${review.page === 0 ? 'disabled' : ''}>Prev</button>
+    ${Array.from({ length: pages }, (_, p) => `
+      <button class="proctor-pager__num ${p === review.page ? 'proctor-pager__num--current' : ''}" data-page="${p}">${p + 1}</button>`).join('')}
+    <button class="btn btn--ghost btn--sm" data-page="next" ${review.page === pages - 1 ? 'disabled' : ''}>Next</button>`;
 }

@@ -8,6 +8,8 @@ export const state = {
   session: null,   // { testId, sample, mode, order[], responses[], checked[], flags[], pos, startedAt, timeLimitS, done }
   lastSummary: null,
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
+  notes: {},       // testId -> { questionId: "personal note" }
+  review: { perPage: 10, showAnswers: true, showNotes: false },
 };
 
 export function saveState() {
@@ -16,6 +18,8 @@ export function saveState() {
       tests: state.tests,
       history: state.history,
       session: state.session,
+      notes: state.notes,
+      review: state.review,
     }));
   } catch { /* storage full or blocked — the app still works for this session */ }
 }
@@ -29,6 +33,8 @@ export function loadState() {
     state.history = data.history || [];
     state.session = data.session || null;
     if (state.session && state.session.done) state.session = null;
+    state.notes = data.notes || {};
+    state.review = { perPage: 10, showAnswers: true, showNotes: false, ...(data.review || {}) };
   } catch { /* corrupted storage — start fresh */ }
 }
 
@@ -72,4 +78,15 @@ export function recordResult(title, mode, scorePct) {
   state.history.unshift({ title, mode, scorePct, at: Date.now() });
   state.history = state.history.slice(0, 50);
   saveState();
+}
+
+export function saveNote(tid, qid, text) {
+  if (!state.notes[tid]) state.notes[tid] = {};
+  if (text.trim()) state.notes[tid][qid] = text;
+  else delete state.notes[tid][qid];
+  saveState();
+}
+
+export function getNote(tid, qid) {
+  return state.notes[tid]?.[qid] || '';
 }
