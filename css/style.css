@@ -624,6 +624,10 @@ button:active,
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-4);
 }
+/* Grid stretches cards to equal height; pin the action row to the bottom
+   so Start/Review line up across cards whose text wraps differently. */
+.proctor-testcard { display: flex; flex-direction: column; }
+.proctor-testcard .toolbar { margin-top: auto; }
 .proctor-testcard h4 { font-size: var(--text-lg); margin-bottom: var(--space-1); }
 .proctor-testcard__desc { color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-2); }
 .proctor-testcard__meta { color: var(--text-muted); font-size: var(--text-sm); margin-bottom: var(--space-3); }
