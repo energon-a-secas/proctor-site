@@ -175,10 +175,12 @@ export function initEvents() {
   // Mode modal
   document.querySelectorAll('.proctor-mode-card').forEach((btn) =>
     btn.addEventListener('click', () => {
+      closeModals();
+      if (!pendingTestId) return;
+      if (btn.dataset.mode === 'review') { openReview(pendingTestId); return; }
       const mode = btn.dataset.mode === 'exam' ? 'exam' : 'study';
       const opts = { shuffleQ: $('shuffleQuestions').checked, shuffleO: $('shuffleOptions').checked };
-      closeModals();
-      if (pendingTestId) startSession(pendingTestId, mode, opts);
+      startSession(pendingTestId, mode, opts);
     }));
 
   // Library cards (delegated)

@@ -807,7 +807,7 @@ button:active,
 .proctor-error { color: var(--danger-hover); font-size: var(--text-sm); margin-top: var(--space-2); white-space: pre-line; }
 
 .proctor-mode-testname { color: var(--text-muted); }
-.proctor-mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.proctor-mode-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .proctor-mode-card {
   display: flex; flex-direction: column; gap: var(--space-2);
   text-align: left;
