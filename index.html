@@ -211,6 +211,7 @@
         <div class="toolbar proctor-review-controls">
           <label class="proctor-toggle"><input type="checkbox" id="reviewShowAnswers" checked> Answers + why</label>
           <label class="proctor-toggle"><input type="checkbox" id="reviewShowNotes"> Notes</label>
+          <label class="proctor-toggle" title="Show only the correct answer under each question"><input type="checkbox" id="reviewOnlyCorrect"> Hide wrong options</label>
           <label class="proctor-perpage">Per page
             <select id="reviewPerPage">
               <option value="5">5</option>
@@ -220,6 +221,7 @@
             </select>
           </label>
           <button class="btn btn--primary btn--sm" id="reviewPdfBtn" title="Opens the print dialog — choose Save as PDF">Export PDF</button>
+          <button class="btn btn--secondary btn--sm" id="reviewShareBtn" title="The whole test travels inside the link — no server, no account">Copy share link</button>
           <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
         </div>
 

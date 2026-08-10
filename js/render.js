@@ -293,19 +293,24 @@ export function renderFormatView() {
 export const review = { testId: null, page: 0 };
 
 function reviewOptionRows(q) {
+  const { showAnswers } = state.review;
+  const onlyCorrect = showAnswers && state.review.onlyCorrect;
   if (q.type === 'fill') {
     return `<p class="proctor-review-accept">Accepted: <strong>${q.accept.map(escHtml).join('</strong> / <strong>')}</strong></p>`;
   }
   if (q.type === 'truefalse') {
-    return [true, false].map((val) => `
-      <div class="proctor-review-opt ${state.review.showAnswers && val === q.answer ? 'proctor-review-opt--correct' : ''}">
-        <span class="proctor-option__key">${val === q.answer && state.review.showAnswers ? '✓' : ''}</span>
+    return [true, false]
+      .filter((val) => !onlyCorrect || val === q.answer)
+      .map((val) => `
+      <div class="proctor-review-opt ${showAnswers && val === q.answer ? 'proctor-review-opt--correct' : ''}">
+        <span class="proctor-option__key">${val === q.answer && showAnswers ? '✓' : ''}</span>
         <span>${val ? 'True' : 'False'}</span>
       </div>`).join('');
   }
   return q.options.map((opt, i) => {
     const isCorrect = q.type === 'single' ? i === q.answer : q.answers.includes(i);
-    const mark = state.review.showAnswers && isCorrect;
+    if (onlyCorrect && !isCorrect) return '';
+    const mark = showAnswers && isCorrect;
     return `
       <div class="proctor-review-opt ${mark ? 'proctor-review-opt--correct' : ''}">
         <span class="proctor-option__key">${mark ? '✓' : String.fromCharCode(65 + i)}</span>
@@ -327,6 +332,8 @@ export function renderReview() {
   $('reviewCount').textContent = `${total} questions`;
   $('reviewShowAnswers').checked = showAnswers;
   $('reviewShowNotes').checked = showNotes;
+  $('reviewOnlyCorrect').checked = state.review.onlyCorrect;
+  $('reviewOnlyCorrect').disabled = !showAnswers;
   $('reviewPerPage').value = String(perPage);
 
   $('reviewList').innerHTML = test.questions.map((q, i) => {

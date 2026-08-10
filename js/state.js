@@ -9,7 +9,7 @@ export const state = {
   lastSummary: null,
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
   notes: {},       // testId -> { questionId: "personal note" }
-  review: { perPage: 10, showAnswers: true, showNotes: false },
+  review: { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false },
 };
 
 export function saveState() {
@@ -34,7 +34,7 @@ export function loadState() {
     state.session = data.session || null;
     if (state.session && state.session.done) state.session = null;
     state.notes = data.notes || {};
-    state.review = { perPage: 10, showAnswers: true, showNotes: false, ...(data.review || {}) };
+    state.review = { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false, ...(data.review || {}) };
   } catch { /* corrupted storage — start fresh */ }
 }
 

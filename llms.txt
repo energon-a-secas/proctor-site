@@ -61,10 +61,13 @@ with "- ", "key: value" maps, quoted or plain scalars, inline [a, b] arrays, and
 
 ## Review mode
 
-The Review button renders the entire test at once: answer key with the ✓ option,
-the explanation under every question, personal notes, and a paginator (5/10/20/all
-per page). Export PDF prints the full test — answers, corrections, and notes —
-via the browser's print dialog, regardless of the on-screen page.
+The Review button (also the third card in the mode picker) renders the entire
+test at once: answer key with the ✓ option, the explanation under every question,
+personal notes, and a paginator (5/10/20/all per page). "Hide wrong options"
+collapses each question to just its correct answer. Export PDF prints the full
+test — answers, corrections, and notes — via the browser's print dialog,
+regardless of the on-screen page. Copy share link puts the whole test in a
+#t=<base64url(JSON)> URL: no server, no account, the link is the data.
 
 ## Loading
 

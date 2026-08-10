@@ -286,7 +286,17 @@ export function initEvents() {
     renderReview();
     $('reviewList').scrollIntoView({ block: 'start' });
   });
+  $('reviewOnlyCorrect').addEventListener('change', (e) => {
+    state.review.onlyCorrect = e.target.checked; saveState(); renderReview();
+  });
   $('reviewPdfBtn').addEventListener('click', () => window.print());
+  $('reviewShareBtn').addEventListener('click', () => {
+    const entry = getTest(review.testId);
+    if (!entry) return;
+    const encoded = b64urlEncode(JSON.stringify(entry.doc || entry));
+    if (encoded.length > 12000) { showToast('Too big to share as a link — send the file instead'); return; }
+    copyText(`${location.origin}${location.pathname}#t=${encoded}`, 'Share link copied — the test travels inside it');
+  });
   $('reviewBackBtn').addEventListener('click', () => { showView('library'); renderLibrary(); });
   // Notes: save as typed (debounced), and mirror into the print-only div
   let noteTimer = null;
