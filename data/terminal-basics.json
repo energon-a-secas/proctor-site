@@ -1,0 +1,90 @@
+{
+  "title": "Terminal Basics",
+  "description": "Everyday shell and git, no tricks",
+  "category": "technical",
+  "timeLimitMinutes": 10,
+  "passingScore": 70,
+  "questions": [
+    {
+      "type": "single",
+      "category": "files",
+      "prompt": "Which command lists hidden files too?",
+      "options": ["ls", "ls -a", "ls -s", "list --all"],
+      "answer": 1,
+      "explanation": "-a includes entries whose names start with a dot; -s shows sizes"
+    },
+    {
+      "type": "single",
+      "category": "files",
+      "prompt": "You are in /tmp/work. Where does `cd ..` leave you?",
+      "options": ["/tmp/work", "/tmp", "/", "Your home directory"],
+      "answer": 1,
+      "explanation": ".. is the parent directory, one level up"
+    },
+    {
+      "type": "multi",
+      "category": "files",
+      "prompt": "Which of these create a directory?",
+      "options": ["mkdir docs", "touch docs/", "install -d docs", "cd docs"],
+      "answers": [0, 2],
+      "explanation": "touch creates files, and cd only moves you; install -d is the lesser-known one"
+    },
+    {
+      "type": "fill",
+      "category": "files",
+      "prompt": "Type the command that prints the current directory path.",
+      "accept": ["pwd"],
+      "explanation": "pwd = print working directory"
+    },
+    {
+      "type": "single",
+      "category": "bash",
+      "prompt": "What does `grep -r TODO src/` do?",
+      "options": [
+        "Replaces TODO in every file under src/",
+        "Searches for TODO recursively under src/",
+        "Removes lines containing TODO",
+        "Renames files matching TODO"
+      ],
+      "answer": 1,
+      "explanation": "-r walks the directory tree; grep never modifies files"
+    },
+    {
+      "type": "truefalse",
+      "category": "bash",
+      "prompt": "`command_a | command_b` sends command_a's output to command_b's input.",
+      "answer": true,
+      "explanation": "That is the pipe: stdout of the left side becomes stdin of the right"
+    },
+    {
+      "type": "single",
+      "category": "bash",
+      "prompt": "Which redirection APPENDS to a file instead of overwriting it?",
+      "options": [">", ">>", "<", "2>"],
+      "answer": 1,
+      "explanation": "A single > truncates first; >> keeps what is there and adds to the end"
+    },
+    {
+      "type": "truefalse",
+      "category": "git",
+      "prompt": "In git, HEAD always points at a branch.",
+      "answer": false,
+      "explanation": "A detached HEAD points at a commit directly, which is how checkouts of tags or old commits work"
+    },
+    {
+      "type": "single",
+      "category": "git",
+      "prompt": "Which command shows what changed but is NOT staged yet?",
+      "options": ["git diff", "git diff --staged", "git status -s", "git log -p"],
+      "answer": 0,
+      "explanation": "Plain git diff compares the working tree against the index; --staged compares the index against HEAD"
+    },
+    {
+      "type": "fill",
+      "category": "git",
+      "prompt": "Type the git subcommand that downloads remote changes without merging them.",
+      "accept": ["fetch", "git fetch"],
+      "explanation": "fetch updates remote-tracking branches; pull is fetch plus merge"
+    }
+  ]
+}

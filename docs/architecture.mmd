@@ -1,0 +1,34 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#0063e5"
+    lineColor: "#38bdf8"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#f0f7ff"
+    clusterBorder: "#bfdbfe"
+    edgeLabelBackground: "#e8f0ff"
+    mainBkg: "#0f172a"
+    nodeBorder: "#0063e5"
+    titleColor: "#1e1b4b"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    User([User]) --> HTML["index.html\nLibrary, runner, results, format views"]
+
+    subgraph App["ES Modules"]
+        HTML --> app["app.js\nEntry: restore, samples, #t= / ?src= import"]
+        app --> state["state.js\nTests + session + history, localStorage"]
+        app --> events["events.js\nSession lifecycle, import, keyboard"]
+        events --> parser["parser.js\nJSON + YAML subset, normalize, validate"]
+        events --> grader["grader.js\nPer-type grading, session summary"]
+        events --> timer["timer.js\nSimulator countdown"]
+        events --> render["render.js\nAll view rendering"]
+    end
+
+    Files[/"test.json / test.yaml\ndrag, paste, ?src=, #t="/] -->|"parseTest()"| parser
+    state <-->|"proctor_v1"| Storage[("localStorage")]

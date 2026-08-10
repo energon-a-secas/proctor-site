@@ -1,0 +1,70 @@
+# Proctor
+
+> Browser exam runner at https://proctor.neorgon.com/. Loads a test from a single
+> JSON or YAML document and runs it as a study session (instant feedback with
+> corrections) or a timed simulator (score, category breakdown, review). Everything
+> runs client-side; nothing is uploaded.
+
+## Writing a test file
+
+Produce ONE JSON object (YAML also works, see limits below). Minimal viable test:
+
+    {
+      "title": "My Test",
+      "questions": [
+        {
+          "type": "single",
+          "prompt": "2 + 2?",
+          "options": ["3", "4", "5"],
+          "answer": 1,
+          "explanation": "Basic addition"
+        }
+      ]
+    }
+
+Top-level fields:
+
+- title (required string)
+- description (string) — one line, shown on the test card
+- category (string) — the test's overall topic
+- timeLimitMinutes (number) — simulator mode starts a countdown and auto-submits
+- passingScore (number, percent) — results show pass/fail against it
+- questions (required array)
+
+Question fields:
+
+- type: "single" | "multi" | "truefalse" | "fill". If omitted it is inferred:
+  boolean answer -> truefalse, "answers" array -> multi, "accept" -> fill, else single.
+- prompt (required string) — the question text ("question" is accepted as an alias)
+- options (array of strings) — required for single/multi, at least 2
+- answer — single: 0-based index into options, or the exact option text;
+  truefalse: true or false
+- answers (array) — multi only: indexes or option texts; grading is exact-set
+- accept (array of strings) — fill only: every accepted typed answer,
+  compared case-insensitively after trimming ("caseSensitive": true to override)
+- explanation (string) — the correction shown after answering; write it as
+  feedback that teaches, not a citation
+- category (string) — per-question topic; results aggregate score per category
+- points (number, default 1) — weight in the final score
+- id (string, optional) — auto-assigned q1..qN when omitted
+
+Recommendations for generated tests: 10-20 questions, mix the four types, give
+every question an explanation and a category, keep options plausible (the wrong
+options should be believable mistakes, not jokes, unless the test is a fun quiz).
+
+## YAML limits
+
+The built-in YAML parser is a subset: plain indentation (2 spaces), block lists
+with "- ", "key: value" maps, quoted or plain scalars, inline [a, b] arrays, and
+"|" block scalars. NOT supported: anchors/aliases, flow maps {a: b}, multi-doc
+"---", tabs. When in doubt, emit JSON — it is the canonical format.
+
+## Loading
+
+- Drag the file onto the page, or paste the document via the Paste dialog
+- https://proctor.neorgon.com/?src=URL fetches a test from a CORS-enabled URL
+- Share links encode the whole test in the fragment: #t=<base64url(JSON)>
+
+## Related
+
+- The Neorgon fleet index: https://neorgon.com/llms.txt
