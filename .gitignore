@@ -17,3 +17,6 @@ package-lock.json
 # ── Secrets — never commit ────────────────────────────────────────────────────
 .env
 .env.*
+
+# ── Task-skill working notes (internal, repo is public) ───────────────────────
+.forge/

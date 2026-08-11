@@ -1,6 +1,7 @@
 // ── Event wiring + session lifecycle ─────────────────────────
 
 import { $, showToast, shuffled, copyText, b64urlEncode } from './utils.js';
+import { mdBlock } from './md.js';
 import { state, saveState, addTest, removeTest, getTest, recordResult, saveNote } from './state.js';
 import { parseTest } from './parser.js';
 import { isAnswered } from './grader.js';
@@ -165,7 +166,9 @@ export function initEvents() {
     const ok = handleRawText($('pasteInput').value, 'paste', {
       onError: (err) => { $('pasteError').textContent = err; $('pasteError').hidden = false; },
     });
-    if (ok) closeModals();
+    // Close only the paste dialog — handleRawText just opened the mode picker,
+    // and closeModals() here would shut it too, making success look like nothing.
+    if (ok) $('pasteModal').hidden = true;
   });
 
   // Modal close (backdrop, X, Cancel, Esc)
@@ -298,19 +301,57 @@ export function initEvents() {
     copyText(`${location.origin}${location.pathname}#t=${encoded}`, 'Share link copied — the test travels inside it');
   });
   $('reviewBackBtn').addEventListener('click', () => { showView('library'); renderLibrary(); });
-  // Notes: save as typed (debounced), and mirror into the print-only div
+  $('reviewEmbedBtn').addEventListener('click', () => {
+    const entry = getTest(review.testId);
+    if (!entry) return;
+    const doc = entry.doc || entry;
+    const encoded = b64urlEncode(JSON.stringify(doc));
+    if (encoded.length > 12000) { showToast('Too big to embed via URL — host the file and use ?src= instead'); return; }
+    const src = `${location.origin}${location.pathname}?embed=1&mode=study#t=${encoded}`;
+    const snippet = `<iframe src="${src}"\n  width="100%" height="640" loading="lazy" style="border:0;border-radius:12px"\n  title="${doc.title.replace(/"/g, '&quot;')} — Proctor"></iframe>`;
+    copyText(snippet, 'Embed code copied — paste it into any page');
+  });
+  // Notes: rendered by default, click to edit; markdown renders on blur
   let noteTimer = null;
   $('reviewList').addEventListener('input', (e) => {
     if (!e.target.classList.contains('proctor-note-input')) return;
     const item = e.target.closest('[data-qid]');
-    const mirror = item.querySelector('.proctor-note-print');
-    if (mirror) mirror.textContent = e.target.value;
     clearTimeout(noteTimer);
     noteTimer = setTimeout(() => saveNote(review.testId, item.dataset.qid, e.target.value), 400);
+  });
+  $('reviewList').addEventListener('click', (e) => {
+    const view = e.target.closest('.proctor-note-view');
+    if (view && !e.target.closest('a')) openNoteEditor(view);
+  });
+  $('reviewList').addEventListener('keydown', (e) => {
+    const view = e.target.closest('.proctor-note-view');
+    if (view && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openNoteEditor(view); }
+  });
+  $('reviewList').addEventListener('focusout', (e) => {
+    if (!e.target.classList.contains('proctor-note-input')) return;
+    const item = e.target.closest('[data-qid]');
+    const text = e.target.value;
+    clearTimeout(noteTimer);
+    saveNote(review.testId, item.dataset.qid, text);
+    const view = item.querySelector('.proctor-note-view');
+    const print = item.querySelector('.proctor-note-print');
+    view.classList.toggle('proctor-note-view--empty', !text.trim());
+    view.innerHTML = text.trim() ? mdBlock(text) : 'Add a note — markdown works here';
+    if (print) print.innerHTML = mdBlock(text);
+    view.hidden = false;
+    e.target.hidden = true;
   });
 
   // Keyboard
   document.addEventListener('keydown', onKey);
+}
+
+function openNoteEditor(view) {
+  const ta = view.parentElement.querySelector('.proctor-note-input');
+  view.hidden = true;
+  ta.hidden = false;
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
 }
 
 export function openReview(id) {
@@ -318,6 +359,11 @@ export function openReview(id) {
   review.page = 0;
   showView('review');
   renderReview();
+}
+
+/** Start a run directly (embed mode boots through this — no mode modal). */
+export function startRun(id, mode) {
+  startSession(id, mode === 'exam' ? 'exam' : 'study');
 }
 
 function selectOption(btn) {

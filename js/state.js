@@ -10,9 +10,11 @@ export const state = {
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
   notes: {},       // testId -> { questionId: "personal note" }
   review: { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false },
+  embed: false,    // ?embed=1 iframe mode: fully in-memory, never touches storage
 };
 
 export function saveState() {
+  if (state.embed) return;
   try {
     localStorage.setItem(KEY, JSON.stringify({
       tests: state.tests,

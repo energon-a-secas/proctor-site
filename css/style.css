@@ -971,3 +971,66 @@ button:active,
   }
   .proctor-note-print:empty { display: none; }
 }
+
+/* ── Markdown content (md.js output) ─────────────────────────── */
+.proctor-md p { margin: 0 0 var(--space-2); }
+.proctor-md p:last-child { margin-bottom: 0; }
+.proctor-md ul, .proctor-md ol { margin: 0 0 var(--space-2); padding-left: var(--space-6); }
+.proctor-md li { margin-bottom: var(--space-1); }
+.proctor-md .md-head { font-weight: 600; color: var(--text-primary); }
+.proctor-md a { color: var(--accent-bright); }
+.proctor-md code, .proctor-option code, .proctor-review-opt code, .proctor-review__line code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.proctor-md .md-code {
+  background: rgba(2, 4, 12, 0.55);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: 0 0 var(--space-2);
+  overflow-x: auto;
+  line-height: 1.5;
+  font-size: var(--text-sm);
+}
+.proctor-md .md-code code { background: none; border: 0; padding: 0; font-size: inherit; }
+.proctor-review__prompt { display: flex; gap: var(--space-2); align-items: baseline; }
+
+/* Notes: rendered view by default, textarea appears on click */
+.proctor-note-view {
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: text;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.proctor-note-view:hover, .proctor-note-view:focus-visible { border-color: var(--accent); }
+.proctor-note-view--empty { color: var(--text-muted); font-style: italic; }
+
+/* ── Embed mode (?embed=1) — chromeless, lives inside an iframe ── */
+.proctor-embed-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.proctor-embed-bar a { color: var(--accent-bright); text-decoration: none; white-space: nowrap; }
+.proctor-embed-bar a:hover { text-decoration: underline; }
+.is-embed .header-bar, .is-embed .neo-footer, .is-embed #dropzone,
+.is-embed .section__titles, .is-embed .section__lead, .is-embed .proctor-keys,
+.is-embed #quitBtn, .is-embed #backToLibraryBtn { display: none !important; }
+.is-embed .container { padding: var(--space-4); }
+
+@media print {
+  .proctor-md code { background: #f2f2f2; border-color: #ddd; color: #000; }
+  .proctor-md .md-code { background: #f6f6f6; border-color: #ddd; color: #000; }
+  .proctor-embed-bar { display: none; }
+}

@@ -52,6 +52,24 @@ Recommendations for generated tests: 10-20 questions, mix the four types, give
 every question an explanation and a category, keep options plausible (the wrong
 options should be believable mistakes, not jokes, unless the test is a fun quiz).
 
+## Markdown
+
+prompt, options, explanation (and the user's own notes) render a strict
+markdown subset: **bold**, *italic*, `inline code`, fenced ``` code blocks,
+[text](https://url) links, - bullet and 1. numbered lists, # headings.
+Raw HTML never renders (everything is escaped first); links must be http(s).
+options are inline-only — no fenced blocks or lists inside an option.
+Use fenced blocks freely in prompts and explanations for technical tests:
+
+    {
+      "prompt": "What does this print?\n\n```python\nprint(2 ** 3)\n```",
+      "options": ["`6`", "`8`", "`9`"],
+      "answer": 1,
+      "explanation": "`**` is exponentiation — see [docs](https://docs.python.org/3/)"
+    }
+
+In JSON, a multi-line prompt is one string with \n; in YAML use a | block scalar.
+
 ## YAML limits
 
 The built-in YAML parser is a subset: plain indentation (2 spaces), block lists
@@ -63,17 +81,34 @@ with "- ", "key: value" maps, quoted or plain scalars, inline [a, b] arrays, and
 
 The Review button (also the third card in the mode picker) renders the entire
 test at once: answer key with the ✓ option, the explanation under every question,
-personal notes, and a paginator (5/10/20/all per page). "Hide wrong options"
-collapses each question to just its correct answer. Export PDF prints the full
-test — answers, corrections, and notes — via the browser's print dialog,
-regardless of the on-screen page. Copy share link puts the whole test in a
-#t=<base64url(JSON)> URL: no server, no account, the link is the data.
+personal notes (markdown, rendered in place — click a note to edit), and a
+paginator (5/10/20/all per page). "Hide wrong options" collapses each question
+to just its correct answer. Export PDF prints the full test — answers,
+corrections, and notes — via the browser's print dialog, regardless of the
+on-screen page. Copy share link puts the whole test in a #t=<base64url(JSON)>
+URL: no server, no account, the link is the data. Copy embed code produces the
+iframe snippet described below.
 
 ## Loading
 
 - Drag the file onto the page, or paste the document via the Paste dialog
 - https://proctor.neorgon.com/?src=URL fetches a test from a CORS-enabled URL
 - Share links encode the whole test in the fragment: #t=<base64url(JSON)>
+
+## Embedding (iframe)
+
+Any site can embed a runnable test — no account, no backend, the test rides
+in the URL:
+
+    <iframe src="https://proctor.neorgon.com/?embed=1&mode=study#t=<base64url(JSON)>"
+      width="100%" height="640" loading="lazy" style="border:0"
+      title="My Test — Proctor"></iframe>
+
+- embed=1 strips the site chrome to a slim bar with an "Open in Proctor" link
+- mode=study | exam | review picks how it auto-starts (default study)
+- The test comes from #t= (data in the URL) or ?src= (fetched, needs CORS)
+- Embed runs are fully in-memory: nothing is written to the visitor's storage
+- The Review view has a "Copy embed code" button that generates this snippet
 
 ## Related
 

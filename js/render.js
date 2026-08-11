@@ -1,6 +1,7 @@
 // ── DOM rendering for every view ─────────────────────────────
 
 import { $, escHtml } from './utils.js';
+import { mdInline, mdBlock } from './md.js';
 import { state, getTest, getNote } from './state.js';
 import { gradeQuestion, isAnswered, correctText, responseText, summarize } from './grader.js';
 import { formatClock } from './timer.js';
@@ -106,7 +107,7 @@ export function renderQuestion() {
   $('progressFill').style.width = `${((s.pos + 1) / s.order.length) * 100}%`;
   $('questionCategory').hidden = !q.category;
   $('questionCategory').textContent = q.category || '';
-  $('questionPrompt').textContent = q.prompt;
+  $('questionPrompt').innerHTML = mdBlock(q.prompt);
   $('flagBtn').setAttribute('aria-pressed', String(!!s.flags[s.pos]));
   $('flagBtn').classList.toggle('proctor-flagged', !!s.flags[s.pos]);
 
@@ -134,7 +135,7 @@ export function renderQuestion() {
         <button type="button" class="${cls}" data-opt="${optIdx}" ${checked ? 'disabled' : ''}
                 role="${q.type === 'single' ? 'radio' : 'checkbox'}" aria-checked="${selected}">
           <span class="proctor-option__key">${shown + 1}</span>
-          <span>${escHtml(q.options[optIdx])}</span>
+          <span>${mdInline(q.options[optIdx])}</span>
         </button>`;
     }).join('');
   } else if (q.type === 'truefalse') {
@@ -164,7 +165,7 @@ export function renderQuestion() {
     fb.hidden = false;
     fb.className = `proctor-feedback ${correct ? 'proctor-feedback--correct' : 'proctor-feedback--wrong'}`;
     $('feedbackVerdict').textContent = correct ? 'Correct' : `Not quite — the answer is: ${correctText(q)}`;
-    $('feedbackExplanation').textContent = q.explanation || '';
+    $('feedbackExplanation').innerHTML = mdBlock(q.explanation || '');
     $('feedbackExplanation').hidden = !q.explanation;
   } else {
     fb.hidden = true;
@@ -234,10 +235,10 @@ export function renderResults() {
       const correct = gradeQuestion(q, resp);
       return `
         <div class="card proctor-review ${correct ? '' : 'proctor-review--wrong'}">
-          <p class="proctor-review__prompt"><span class="proctor-review__n">${pos + 1}</span> ${escHtml(q.prompt)}</p>
-          <p class="proctor-review__line">${correct ? '✓' : '✗'} Your answer: <strong>${escHtml(responseText(q, resp))}</strong></p>
-          ${correct ? '' : `<p class="proctor-review__line">Correct answer: <strong>${escHtml(correctText(q))}</strong></p>`}
-          ${q.explanation ? `<p class="proctor-review__explanation">${escHtml(q.explanation)}</p>` : ''}
+          <div class="proctor-review__prompt proctor-md"><span class="proctor-review__n">${pos + 1}</span><div>${mdBlock(q.prompt)}</div></div>
+          <p class="proctor-review__line">${correct ? '✓' : '✗'} Your answer: <strong>${mdInline(responseText(q, resp))}</strong></p>
+          ${correct ? '' : `<p class="proctor-review__line">Correct answer: <strong>${mdInline(correctText(q))}</strong></p>`}
+          ${q.explanation ? `<div class="proctor-review__explanation proctor-md">${mdBlock(q.explanation)}</div>` : ''}
         </div>`;
     }).join('')}`;
 }
@@ -296,7 +297,7 @@ function reviewOptionRows(q) {
   const { showAnswers } = state.review;
   const onlyCorrect = showAnswers && state.review.onlyCorrect;
   if (q.type === 'fill') {
-    return `<p class="proctor-review-accept">Accepted: <strong>${q.accept.map(escHtml).join('</strong> / <strong>')}</strong></p>`;
+    return `<p class="proctor-review-accept">Accepted: <strong>${q.accept.map(mdInline).join('</strong> / <strong>')}</strong></p>`;
   }
   if (q.type === 'truefalse') {
     return [true, false]
@@ -314,7 +315,7 @@ function reviewOptionRows(q) {
     return `
       <div class="proctor-review-opt ${mark ? 'proctor-review-opt--correct' : ''}">
         <span class="proctor-option__key">${mark ? '✓' : String.fromCharCode(65 + i)}</span>
-        <span>${escHtml(opt)}</span>
+        <span>${mdInline(opt)}</span>
       </div>`;
   }).join('');
 }
@@ -346,15 +347,17 @@ export function renderReview() {
           ${q.category ? `<span class="proctor-chip proctor-chip--category">${escHtml(q.category)}</span>` : ''}
           <span class="proctor-review-item__type">${q.type}</span>
         </div>
-        <p class="proctor-review-item__prompt">${escHtml(q.prompt)}</p>
+        <div class="proctor-review-item__prompt proctor-md">${mdBlock(q.prompt)}</div>
         <div class="proctor-review-opts">${reviewOptionRows(q)}</div>
-        ${showAnswers && q.explanation ? `<p class="proctor-review-item__why"><strong>Why:</strong> ${escHtml(q.explanation)}</p>` : ''}
+        ${showAnswers && q.explanation ? `<div class="proctor-review-item__why proctor-md"><strong>Why:</strong> ${mdBlock(q.explanation)}</div>` : ''}
         ${showNotes ? `
           <div class="proctor-review-note">
-            <textarea class="proctor-note-input" rows="2" placeholder="Your note for this question"
-                      aria-label="Note for question ${i + 1}">${escHtml(note)}</textarea>
-            <div class="proctor-note-print">${escHtml(note)}</div>
-          </div>` : (note ? `<div class="proctor-note-print proctor-note-print--always">${escHtml(note)}</div>` : '')}
+            <div class="proctor-note-view proctor-md ${note ? '' : 'proctor-note-view--empty'}"
+                 role="button" tabindex="0" title="Click to edit — markdown works here">${note ? mdBlock(note) : 'Add a note — markdown works here'}</div>
+            <textarea class="proctor-note-input" rows="3" placeholder="Your note for this question (markdown works)"
+                      aria-label="Note for question ${i + 1}" hidden>${escHtml(note)}</textarea>
+            <div class="proctor-note-print proctor-md">${mdBlock(note)}</div>
+          </div>` : (note ? `<div class="proctor-note-print proctor-note-print--always proctor-md">${mdBlock(note)}</div>` : '')}
       </div>`;
   }).join('');
 

@@ -9,9 +9,9 @@
       "type": "single",
       "category": "files",
       "prompt": "Which command lists hidden files too?",
-      "options": ["ls", "ls -a", "ls -s", "list --all"],
+      "options": ["`ls`", "`ls -a`", "`ls -s`", "`list --all`"],
       "answer": 1,
-      "explanation": "-a includes entries whose names start with a dot; -s shows sizes"
+      "explanation": "`-a` includes entries whose names start with a dot; `-s` shows sizes"
     },
     {
       "type": "single",
@@ -59,10 +59,10 @@
     {
       "type": "single",
       "category": "bash",
-      "prompt": "Which redirection APPENDS to a file instead of overwriting it?",
-      "options": [">", ">>", "<", "2>"],
+      "prompt": "Which redirection APPENDS to a file instead of overwriting it?\n\n```bash\necho \"new line\" ?? notes.txt\n```",
+      "options": ["`>`", "`>>`", "`<`", "`2>`"],
       "answer": 1,
-      "explanation": "A single > truncates first; >> keeps what is there and adds to the end"
+      "explanation": "A single `>` truncates first; `>>` keeps what is there and adds to the end"
     },
     {
       "type": "truefalse",

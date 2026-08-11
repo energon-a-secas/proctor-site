@@ -49,8 +49,10 @@ spec ships at `/llms.txt` and behind the Format button.
 - **LLM-ready format** -- one-click prompt copy; paste the model's output straight back in
 - **Share links** -- a whole test travels in the URL fragment, nothing touches a server
 - **Review mode** -- every question fully rendered with the answer key and the why, paginated at your pace (5/10/20/all per page); hide the wrong options for a compact answer sheet, and share the whole test from the same toolbar
-- **Notes and PDF** -- annotate any question with your own notes, then export the whole test (answers, corrections, notes) to PDF via the print dialog
-- **Local by design** -- tests, sessions, notes, and history live in localStorage only
+- **Markdown everywhere** -- prompts, options, explanations, and notes render a safe subset: fenced code blocks, inline code, bold, italic, links, lists
+- **Notes and PDF** -- annotate any question with markdown notes (rendered in place, click to edit), then export the whole test (answers, corrections, notes) to PDF via the print dialog
+- **Embeddable** -- one iframe snippet runs a full test inside any other site or tool (`?embed=1&mode=study#t=...`), chromeless and stateless; Review has a Copy embed code button
+- **Local by design** -- tests, sessions, notes, and history live in localStorage only; embed runs write nothing at all
 
 ---
 
@@ -99,8 +101,9 @@ proctor-site/
 ├── css/style.css       # Site styles over CDN base tokens
 ├── data/               # Sample tests (one JSON, one YAML on purpose)
 └── js/
-    ├── app.js          # Entry point: restore, samples, #t= and ?src= import
+    ├── app.js          # Entry point: restore, samples, #t= and ?src= import, embed boot
     ├── state.js        # Tests, session, history in localStorage
+    ├── md.js           # Markdown subset renderer (escape-first, no deps)
     ├── parser.js       # JSON + YAML-subset parsing, normalization, validation
     ├── grader.js       # Per-type grading + session summary
     ├── timer.js        # Simulator countdown

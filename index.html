@@ -21,7 +21,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="https://proctor.neorgon.com/og-preview.jpg">
-  <meta name="neo-version" content="1.1.0">
+  <meta name="neo-version" content="1.2.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
   <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
@@ -131,12 +131,12 @@
             <span class="proctor-chip proctor-chip--category" id="questionCategory" hidden></span>
             <button type="button" class="btn btn--ghost btn--sm" id="flagBtn" aria-pressed="false" title="Flag for review (F)">Flag</button>
           </div>
-          <p class="proctor-question__prompt" id="questionPrompt"></p>
+          <div class="proctor-question__prompt proctor-md" id="questionPrompt"></div>
           <p class="proctor-question__hint" id="questionHint"></p>
           <div class="proctor-options" id="optionsHost"></div>
           <div class="proctor-feedback" id="feedbackPanel" hidden>
             <p class="proctor-feedback__verdict" id="feedbackVerdict"></p>
-            <p class="proctor-feedback__explanation" id="feedbackExplanation"></p>
+            <div class="proctor-feedback__explanation proctor-md" id="feedbackExplanation"></div>
           </div>
         </div>
 
@@ -194,6 +194,8 @@
             <li><code>category</code> — free text; scores roll up per category on the results screen</li>
             <li><code>timeLimitMinutes</code>, <code>passingScore</code> — optional, used by simulator mode</li>
             <li>YAML works too: same fields, plain indentation only (no anchors, no inline maps)</li>
+            <li>Markdown in <code>prompt</code>, <code>options</code>, <code>explanation</code>, and notes: <code>**bold**</code>, <code>*italic*</code>, <code>`code`</code>, fenced <code>```</code> blocks, links, lists (options: inline only)</li>
+            <li>Embed a test anywhere: <code>?embed=1&amp;mode=study#t=…</code> in an iframe — chromeless, auto-starts, saves nothing</li>
           </ul>
         </div>
       </section>
@@ -222,6 +224,7 @@
           </label>
           <button class="btn btn--primary btn--sm" id="reviewPdfBtn" title="Opens the print dialog — choose Save as PDF">Export PDF</button>
           <button class="btn btn--secondary btn--sm" id="reviewShareBtn" title="The whole test travels inside the link — no server, no account">Copy share link</button>
+          <button class="btn btn--secondary btn--sm" id="reviewEmbedBtn" title="Iframe snippet for your own site or tool — the test travels inside it">Copy embed code</button>
           <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
         </div>
 
