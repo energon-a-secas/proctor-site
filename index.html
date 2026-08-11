@@ -21,7 +21,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="https://proctor.neorgon.com/og-preview.jpg">
-  <meta name="neo-version" content="1.4.0">
+  <meta name="neo-version" content="1.5.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
   <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
@@ -121,6 +121,7 @@
             <span class="proctor-chip" id="modeChip"></span>
           </div>
           <div class="proctor-runbar__status">
+            <span class="proctor-pace" id="paceLabel" hidden></span>
             <span class="proctor-timer" id="timerDisplay" hidden>--:--</span>
             <span class="proctor-progress-label" id="progressLabel"></span>
           </div>
@@ -301,6 +302,9 @@
         <label class="proctor-toggle"><input type="checkbox" id="shuffleOptions"> Shuffle options</label>
         <label class="proctor-draw" title="Random slice of the bank; questions marked ensure are always included">
           Draw <input type="number" id="drawCount" min="1" inputmode="numeric"> questions (blank = all)
+        </label>
+        <label class="proctor-draw" title="Simulator countdown — blank = the test's own limit, 0 = no timer">
+          Time limit <input type="number" id="timeLimitInput" min="0" inputmode="numeric"> min (Simulator)
         </label>
         <div class="proctor-weak-row" id="weakRow" hidden>
           <span id="weakCount"></span>

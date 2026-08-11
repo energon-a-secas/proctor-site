@@ -48,6 +48,7 @@ spec ships at `/llms.txt` and behind the Format button.
 - **JSON, YAML, Aiken, GIFT, CSV** -- built-in parsers for all five, no dependencies, JSON is canonical; Moodle exports and spreadsheets drop straight in
 - **Draw N** -- run a random slice of a big bank; questions marked `ensure: true` always make the cut
 - **Weak-question practice** -- every finished run records per-question hits and misses; the mode picker offers a study run of just the questions you keep getting wrong
+- **Pacing** -- set a time limit on any test at start (even one without its own), watch your s/question average against the budget while you sit it, and see per-question times (slowest flagged) on the results screen and in the CSV
 - **Progress** -- score trend per test (sparkline, best/last), latest category breakdown, and recent-run history -- all from localStorage
 - **Results export** -- per-question CSV (your answer, the correct one, category, points) from the results screen
 - **LLM-ready format** -- one-click prompt copy; paste the model's output straight back in

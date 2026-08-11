@@ -33,7 +33,17 @@ My topic: `;
 
 let pendingTestId = null;
 
-function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount } = {}) {
+let shownAt = null; // when the current question appeared — per-question time source
+
+/** Book the time spent on the current question before leaving it. */
+function bookTime() {
+  const s = state.session;
+  if (!s || s.done || shownAt === null || !s.times) return;
+  s.times[s.pos] = (s.times[s.pos] || 0) + (Date.now() - shownAt) / 1000;
+  shownAt = Date.now();
+}
+
+function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount, timeLimitMin } = {}) {
   const entry = getTest(id);
   if (!entry) { showToast('Test not found'); return; }
   const test = entry.doc || entry;
@@ -52,6 +62,8 @@ function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount } = {}
     const idxs = q.options.map((_, i) => i);
     return shuffleO ? shuffled(idxs) : idxs;
   });
+  // Time limit: blank = the test's own, 0 = explicitly no timer, N = N minutes
+  const limitMin = timeLimitMin ?? test.timeLimitMinutes;
   state.session = {
     testId: id,
     mode,
@@ -60,15 +72,17 @@ function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount } = {}
     responses: new Array(order.length).fill(null),
     checked: new Array(order.length).fill(false),
     flags: new Array(order.length).fill(false),
+    times: new Array(order.length).fill(0),
     pos: 0,
     startedAt: Date.now(),
     finishedAt: null,
-    timeLimitS: mode === 'exam' && test.timeLimitMinutes ? test.timeLimitMinutes * 60 : null,
+    timeLimitS: mode === 'exam' && limitMin ? limitMin * 60 : null,
     done: false,
   };
   saveState();
   showView('runner');
   renderRunner();
+  shownAt = Date.now();
   if (state.session.timeLimitS) {
     startTimer(state.session.timeLimitS, renderTimer, () => {
       showToast('Time is up — submitting');
@@ -80,6 +94,8 @@ function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount } = {}
 function finishSession() {
   const s = state.session;
   if (!s) return;
+  bookTime();
+  shownAt = null;
   stopTimer();
   s.done = true;
   s.finishedAt = Date.now();
@@ -98,6 +114,7 @@ function finishSession() {
 
 function quitSession() {
   stopTimer();
+  shownAt = null;
   state.session = null;
   saveState();
   renderLibrary();
@@ -107,8 +124,10 @@ function quitSession() {
 function resumeSession() {
   const s = state.session;
   if (!s) return;
+  if (!s.times) s.times = new Array(s.order.length).fill(0); // pre-1.5 session
   showView('runner');
   renderRunner();
+  shownAt = Date.now();
   if (s.timeLimitS) {
     // Resume budget: original limit minus time already spent before the reload.
     const spent = Math.round((Date.now() - s.startedAt) / 1000);
@@ -152,6 +171,8 @@ function openModeModal(id) {
   $('drawCount').value = '';
   $('drawCount').max = String(total);
   $('drawCount').placeholder = String(total);
+  $('timeLimitInput').value = '';
+  $('timeLimitInput').placeholder = (t && (t.doc || t).timeLimitMinutes) ? String((t.doc || t).timeLimitMinutes) : 'none';
   const weak = t ? weakIdxs(id, t.doc || t) : [];
   $('weakRow').hidden = weak.length === 0;
   $('weakCount').textContent = weak.length
@@ -219,10 +240,13 @@ export function initEvents() {
       if (btn.dataset.mode === 'review') { openReview(pendingTestId); return; }
       const mode = btn.dataset.mode === 'exam' ? 'exam' : 'study';
       const draw = parseInt($('drawCount').value, 10);
+      const rawTime = $('timeLimitInput').value.trim();
+      const time = parseInt(rawTime, 10);
       const opts = {
         shuffleQ: $('shuffleQuestions').checked,
         shuffleO: $('shuffleOptions').checked,
         drawCount: Number.isFinite(draw) && draw > 0 ? draw : null,
+        timeLimitMin: rawTime === '' || !Number.isFinite(time) ? null : Math.max(0, time),
       };
       startSession(pendingTestId, mode, opts);
     }));
@@ -288,6 +312,7 @@ export function initEvents() {
   $('paletteHost').addEventListener('click', (e) => {
     const cell = e.target.closest('[data-pos]');
     if (!cell) return;
+    bookTime();
     state.session.pos = parseInt(cell.dataset.pos, 10);
     renderQuestion();
   });
@@ -309,12 +334,12 @@ export function initEvents() {
     if (!s) return;
     const test = getTest(s.testId); const doc = test.doc || test;
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['n', 'category', 'prompt', 'your_answer', 'correct_answer', 'correct', 'points'].join(',')];
+    const rows = [['n', 'category', 'prompt', 'your_answer', 'correct_answer', 'correct', 'points', 'seconds'].join(',')];
     s.order.forEach((qIdx, pos) => {
       const q = doc.questions[qIdx];
       const ok = gradeQuestion(q, s.responses[pos]);
       rows.push([pos + 1, esc(q.category), esc(q.prompt), esc(responseText(q, s.responses[pos])),
-        esc(correctText(q)), ok ? 'yes' : 'no', q.points].join(','));
+        esc(correctText(q)), ok ? 'yes' : 'no', q.points, Math.round(s.times?.[pos] || 0)].join(','));
     });
     rows.push(['', '', esc(`TOTAL ${state.lastSummary.scorePct}%`), '', '', '', `${state.lastSummary.points}/${state.lastSummary.maxPoints}`].join(','));
     const slug = doc.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
@@ -420,8 +445,8 @@ export function openReview(id) {
 }
 
 /** Start a run directly (embed mode boots through this — no mode modal). */
-export function startRun(id, mode, { drawCount } = {}) {
-  startSession(id, mode === 'exam' ? 'exam' : 'study', { drawCount });
+export function startRun(id, mode, { drawCount, timeLimitMin } = {}) {
+  startSession(id, mode === 'exam' ? 'exam' : 'study', { drawCount, timeLimitMin });
 }
 
 function selectOption(btn) {
@@ -459,6 +484,7 @@ function move(delta) {
   const s = state.session;
   const next = s.pos + delta;
   if (next < 0 || next >= s.order.length) return;
+  bookTime();
   s.pos = next;
   saveState();
   renderQuestion();

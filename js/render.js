@@ -105,6 +105,19 @@ export function renderQuestion() {
 
   $('progressLabel').textContent = `${s.pos + 1} / ${s.order.length}`;
   $('progressFill').style.width = `${((s.pos + 1) / s.order.length) * 100}%`;
+
+  // Pace: average booked time per visited question vs the per-question budget
+  const pace = $('paceLabel');
+  const visited = s.times ? s.times.filter((t) => t > 0).length : 0;
+  if (s.mode === 'exam' && visited >= 1) {
+    const avg = s.times.reduce((a, b) => a + b, 0) / visited;
+    const budget = s.timeLimitS ? s.timeLimitS / s.order.length : null;
+    pace.hidden = false;
+    pace.textContent = `${Math.round(avg)}s/q${budget ? ` · budget ${Math.round(budget)}s` : ''}`;
+    pace.classList.toggle('proctor-pace--over', !!budget && avg > budget);
+  } else {
+    pace.hidden = true;
+  }
   $('questionCategory').hidden = !q.category;
   $('questionCategory').textContent = q.category || '';
   $('questionPrompt').innerHTML = mdBlock(q.prompt);
@@ -203,11 +216,13 @@ export function renderResults() {
   state.lastSummary = sum;
 
   const timeUsed = s.finishedAt && s.startedAt ? Math.round((s.finishedAt - s.startedAt) / 1000) : null;
+  const booked = s.times ? s.times.reduce((a, b) => a + b, 0) : 0;
+  const avgQ = booked > 0 ? Math.round(booked / s.order.length) : null;
   $('scoreCard').innerHTML = `
     <div class="proctor-score__pct ${sum.scorePct >= 70 ? 'proctor-score__pct--good' : ''}">${sum.scorePct}%</div>
     <div class="proctor-score__detail">
       <p><strong>${escHtml(test.title)}</strong> · ${s.mode === 'exam' ? 'Simulator' : 'Study'}</p>
-      <p>${sum.points} of ${sum.maxPoints} points${timeUsed !== null ? ` · ${formatClock(timeUsed)} used` : ''}</p>
+      <p>${sum.points} of ${sum.maxPoints} points${timeUsed !== null ? ` · ${formatClock(timeUsed)} used` : ''}${avgQ !== null ? ` · ${avgQ}s/question` : ''}</p>
       ${sum.passed !== null ? `<span class="proctor-chip ${sum.passed ? 'proctor-chip--pass' : 'proctor-chip--fail'}">${sum.passed ? `Passed (needs ${test.passingScore}%)` : `Below the ${test.passingScore}% pass mark`}</span>` : ''}
     </div>`;
 
@@ -233,9 +248,11 @@ export function renderResults() {
       const q = test.questions[qIdx];
       const resp = s.responses[pos];
       const correct = gradeQuestion(q, resp);
+      const secs = s.times?.[pos] ? Math.round(s.times[pos]) : null;
+      const maxT = s.times ? Math.max(...s.times) : 0;
       return `
         <div class="card proctor-review ${correct ? '' : 'proctor-review--wrong'}">
-          <div class="proctor-review__prompt proctor-md"><span class="proctor-review__n">${pos + 1}</span><div>${mdBlock(q.prompt)}</div></div>
+          <div class="proctor-review__prompt proctor-md"><span class="proctor-review__n">${pos + 1}</span><div>${mdBlock(q.prompt)}</div>${secs !== null ? `<span class="proctor-review__time ${s.times[pos] === maxT && s.order.length > 1 ? 'proctor-review__time--slow' : ''}">${secs}s</span>` : ''}</div>
           <p class="proctor-review__line">${correct ? '✓' : '✗'} Your answer: <strong>${mdInline(responseText(q, resp))}</strong></p>
           ${correct ? '' : `<p class="proctor-review__line">Correct answer: <strong>${mdInline(correctText(q))}</strong></p>`}
           ${q.explanation ? `<div class="proctor-review__explanation proctor-md">${mdBlock(q.explanation)}</div>` : ''}

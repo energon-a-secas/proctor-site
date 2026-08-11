@@ -45,7 +45,11 @@ function onImported(test, id) {
   const mode = params.get('mode') || 'study';
   if (mode === 'review') { openReview(id); return; }
   const draw = parseInt(params.get('draw'), 10);
-  startRun(id, mode, { drawCount: Number.isFinite(draw) && draw > 0 ? draw : null });
+  const time = parseInt(params.get('time'), 10);
+  startRun(id, mode, {
+    drawCount: Number.isFinite(draw) && draw > 0 ? draw : null,
+    timeLimitMin: Number.isFinite(time) && time >= 0 ? time : null,
+  });
 }
 
 function importFromUrl() {

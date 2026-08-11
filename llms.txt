@@ -124,6 +124,8 @@ in the URL:
 - embed=1 strips the site chrome to a slim bar with an "Open in Proctor" link
 - mode=study | exam | review picks how it auto-starts (default study)
 - draw=N runs a random N-question slice ("ensure" questions always included)
+- time=N sets a simulator countdown of N minutes (0 = no timer), overriding
+  the test's own timeLimitMinutes; applies to mode=exam only
 - The test comes from #t= (data in the URL) or ?src= (fetched, needs CORS)
 - Embed runs are fully in-memory: nothing is written to the visitor's storage
 - The Review view has a "Copy embed code" button that generates this snippet
