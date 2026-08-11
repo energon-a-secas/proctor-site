@@ -18,17 +18,19 @@ config:
     fontSize: "13px"
 ---
 flowchart TB
-    User([User]) --> HTML["index.html\nLibrary, runner, results, format views"]
+    User([User]) --> HTML["index.html\nLibrary, runner, results, format, review views"]
+    Host([Host site]) -->|"iframe ?embed=1"| HTML
 
     subgraph App["ES Modules"]
-        HTML --> app["app.js\nEntry: restore, samples, #t= / ?src= import"]
-        app --> state["state.js\nTests + session + history, localStorage"]
+        HTML --> app["app.js\nEntry: restore, samples, #t= / ?src= import, embed boot"]
+        app --> state["state.js\nTests + session + notes, localStorage"]
         app --> events["events.js\nSession lifecycle, import, keyboard"]
         events --> parser["parser.js\nJSON + YAML subset, normalize, validate"]
         events --> grader["grader.js\nPer-type grading, session summary"]
         events --> timer["timer.js\nSimulator countdown"]
         events --> render["render.js\nAll view rendering"]
+        render --> md["md.js\nMarkdown subset, escape-first"]
     end
 
     Files[/"test.json / test.yaml\ndrag, paste, ?src=, #t="/] -->|"parseTest()"| parser
-    state <-->|"proctor_v1"| Storage[("localStorage")]
+    state <-->|"proctor_v1 (skipped in embed)"| Storage[("localStorage")]
