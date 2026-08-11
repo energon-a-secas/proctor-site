@@ -21,7 +21,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="https://proctor.neorgon.com/og-preview.jpg">
-  <meta name="neo-version" content="1.2.0">
+  <meta name="neo-version" content="1.3.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
   <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
@@ -67,6 +67,7 @@
     <div class="header-right">
       <div class="header-actions">
         <button class="btn btn--primary btn--sm" id="loadTestBtn" data-keep-mobile>Load test</button>
+        <button class="btn btn--ghost btn--sm" id="progressBtn">Progress</button>
         <button class="btn btn--ghost btn--sm" id="formatBtn">Format</button>
       </div>
       <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
@@ -98,7 +99,7 @@
           </svg>
           <p><strong>Drop a test file</strong> or click to browse</p>
           <p class="proctor-dropzone__hint">.json / .yaml — or <button type="button" class="proctor-link" id="pasteBtn">paste it</button></p>
-          <input type="file" id="fileInput" accept=".json,.yaml,.yml,.txt,application/json" hidden>
+          <input type="file" id="fileInput" accept=".json,.yaml,.yml,.txt,.csv,.gift,application/json,text/csv" hidden>
         </div>
 
         <div class="stack" id="sampleSection">
@@ -162,9 +163,19 @@
         <div class="toolbar">
           <button class="btn btn--primary" id="retakeBtn">Retake</button>
           <button class="btn btn--secondary" id="retakeMissedBtn">Retake missed only</button>
+          <button class="btn btn--secondary" id="exportCsvBtn" title="Per-question results as a CSV file">Export CSV</button>
           <button class="btn btn--ghost" id="backToLibraryBtn">Back to library</button>
         </div>
         <div class="stack" id="reviewHost"></div>
+      </section>
+
+      <!-- ── Progress ────────────────────────────────────────── -->
+      <section class="section" id="view-progress" aria-labelledby="progress-title" hidden>
+        <div class="section__titles">
+          <h2 class="section__title" id="progress-title">Progress</h2>
+          <p class="section__lead">Every finished run lands here — score trends per test, and your recent history. Stored only in this browser.</p>
+        </div>
+        <div class="stack" id="progressHost"></div>
       </section>
 
       <!-- ── Format ──────────────────────────────────────────── -->
@@ -195,7 +206,9 @@
             <li><code>timeLimitMinutes</code>, <code>passingScore</code> — optional, used by simulator mode</li>
             <li>YAML works too: same fields, plain indentation only (no anchors, no inline maps)</li>
             <li>Markdown in <code>prompt</code>, <code>options</code>, <code>explanation</code>, and notes: <code>**bold**</code>, <code>*italic*</code>, <code>`code`</code>, fenced <code>```</code> blocks, links, lists (options: inline only)</li>
-            <li>Embed a test anywhere: <code>?embed=1&amp;mode=study#t=…</code> in an iframe — chromeless, auto-starts, saves nothing</li>
+            <li><code>ensure: true</code> — question always survives a "Draw N" random slice</li>
+            <li>Also imports Aiken and GIFT (Moodle) and CSV — header row <code>prompt,options,answer,…</code>, options <code>|</code>-separated</li>
+            <li>Embed a test anywhere: <code>?embed=1&amp;mode=study&amp;draw=N#t=…</code> in an iframe — chromeless, auto-starts, saves nothing</li>
           </ul>
         </div>
       </section>
@@ -286,6 +299,9 @@
         </div>
         <label class="proctor-toggle"><input type="checkbox" id="shuffleQuestions"> Shuffle questions</label>
         <label class="proctor-toggle"><input type="checkbox" id="shuffleOptions"> Shuffle options</label>
+        <label class="proctor-draw" title="Random slice of the bank; questions marked ensure are always included">
+          Draw <input type="number" id="drawCount" min="1" inputmode="numeric"> questions (blank = all)
+        </label>
       </div>
     </div>
   </div>

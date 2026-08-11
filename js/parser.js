@@ -5,6 +5,8 @@
 // no flow maps, no multi-doc. The limits are documented in /llms.txt; JSON is
 // the canonical format and YAML exists for hand-written tests.
 
+import { sniffFormat, parseAiken, parseGIFT, parseCSV } from './formats.js';
+
 const TAB_RE = /^\s*\t/;
 
 function yamlScalar(raw) {
@@ -135,20 +137,35 @@ function inferType(q) {
   return 'single';
 }
 
-/** Parse raw text (JSON or YAML) into a normalized test, or { error }. */
-export function parseTest(text) {
+/** Parse raw text (JSON, YAML, Aiken, GIFT, or CSV) into a normalized test, or { error }.
+ *  `name` (e.g. the file name) titles formats that carry no title of their own. */
+export function parseTest(text, { name } = {}) {
   let doc;
   const trimmed = text.trim();
   if (!trimmed) return { error: 'The file is empty' };
   try {
     doc = JSON.parse(trimmed);
   } catch (jsonErr) {
-    try {
-      doc = parseYAMLSubset(trimmed);
-    } catch (yamlErr) {
-      const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[');
-      return { error: looksJson ? `Invalid JSON: ${jsonErr.message}` : `Not valid JSON, and YAML parsing failed: ${yamlErr.message}` };
+    const alt = sniffFormat(trimmed);
+    if (alt) {
+      try {
+        doc = { aiken: parseAiken, gift: parseGIFT, csv: parseCSV }[alt](trimmed);
+      } catch (altErr) {
+        return { error: `Looks like ${alt.toUpperCase()}, but: ${altErr.message}` };
+      }
+    } else {
+      try {
+        doc = parseYAMLSubset(trimmed);
+      } catch (yamlErr) {
+        const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+        return { error: looksJson ? `Invalid JSON: ${jsonErr.message}` : `Not valid JSON, and YAML parsing failed: ${yamlErr.message}` };
+      }
     }
+  }
+  if (doc && typeof doc === 'object' && !Array.isArray(doc) && !doc.title) {
+    doc.title = name
+      ? name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
+      : `Imported test — ${new Date().toISOString().slice(0, 10)}`;
   }
   return normalizeTest(doc);
 }
@@ -180,6 +197,7 @@ export function normalizeTest(doc) {
       category: q.category ? String(q.category).trim() : null,
       explanation: q.explanation ? String(q.explanation).trim() : null,
       points: typeof q.points === 'number' && q.points > 0 ? q.points : 1,
+      ensure: q.ensure === true || q.ensure === 'true',
     };
 
     if (type === 'single' || type === 'multi') {

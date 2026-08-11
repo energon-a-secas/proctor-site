@@ -46,6 +46,8 @@ Question fields:
   feedback that teaches, not a citation
 - category (string) — per-question topic; results aggregate score per category
 - points (number, default 1) — weight in the final score
+- ensure (boolean, default false) — always included when the user runs a
+  random slice of the test ("Draw N questions"); use it for must-know items
 - id (string, optional) — auto-assigned q1..qN when omitted
 
 Recommendations for generated tests: 10-20 questions, mix the four types, give
@@ -69,6 +71,21 @@ Use fenced blocks freely in prompts and explanations for technical tests:
     }
 
 In JSON, a multi-line prompt is one string with \n; in YAML use a | block scalar.
+
+## Other input formats
+
+Beyond JSON/YAML, the importer detects and converts:
+
+- Aiken (Moodle): question text, "A. option" lines, "ANSWER: B". Single-choice only.
+- GIFT (Moodle, subset): "::title:: prompt {=right ~wrong #feedback}", {T}/{F},
+  {=fill =fill2} for typed answers, "####" general feedback. Not supported:
+  numeric ranges, matching pairs; "%weights%" are read but ignored.
+- CSV: header row names the columns — prompt (or question), options (| separated),
+  answer (index, text, or true/false), answers (| separated, for multi),
+  accept (| separated, for fill), explanation, category, type, points.
+
+Formats with no title of their own are titled from the file name. JSON stays
+the canonical format — generate JSON unless the source system speaks these.
 
 ## YAML limits
 
@@ -106,6 +123,7 @@ in the URL:
 
 - embed=1 strips the site chrome to a slim bar with an "Open in Proctor" link
 - mode=study | exam | review picks how it auto-starts (default study)
+- draw=N runs a random N-question slice ("ensure" questions always included)
 - The test comes from #t= (data in the URL) or ?src= (fetched, needs CORS)
 - Embed runs are fully in-memory: nothing is written to the visitor's storage
 - The Review view has a "Copy embed code" button that generates this snippet

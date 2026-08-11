@@ -43,8 +43,9 @@ function onImported(test, id) {
   const t = document.getElementById('embedBarTitle');
   if (t) t.textContent = test.title;
   const mode = params.get('mode') || 'study';
-  if (mode === 'review') openReview(id);
-  else startRun(id, mode);
+  if (mode === 'review') { openReview(id); return; }
+  const draw = parseInt(params.get('draw'), 10);
+  startRun(id, mode, { drawCount: Number.isFinite(draw) && draw > 0 ? draw : null });
 }
 
 function importFromUrl() {

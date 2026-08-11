@@ -1,13 +1,13 @@
 // ── Event wiring + session lifecycle ─────────────────────────
 
-import { $, showToast, shuffled, copyText, b64urlEncode } from './utils.js';
+import { $, showToast, shuffled, copyText, b64urlEncode, downloadFile } from './utils.js';
 import { mdBlock } from './md.js';
 import { state, saveState, addTest, removeTest, getTest, recordResult, saveNote } from './state.js';
 import { parseTest } from './parser.js';
-import { isAnswered } from './grader.js';
+import { isAnswered, gradeQuestion, responseText, correctText } from './grader.js';
 import {
   showView, renderLibrary, renderRunner, renderQuestion, renderPalette,
-  renderResults, renderTimer, FORMAT_EXAMPLE, review, renderReview,
+  renderResults, renderTimer, FORMAT_EXAMPLE, review, renderReview, renderProgress,
 } from './render.js';
 import { startTimer, stopTimer } from './timer.js';
 
@@ -30,11 +30,18 @@ My topic: `;
 
 let pendingTestId = null;
 
-function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs } = {}) {
+function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount } = {}) {
   const entry = getTest(id);
   if (!entry) { showToast('Test not found'); return; }
   const test = entry.doc || entry;
   let order = onlyIdxs ?? test.questions.map((_, i) => i);
+  // Random slice of the bank: "ensure" questions are always in, the rest
+  // are drawn by lottery up to the requested count.
+  if (!onlyIdxs && drawCount && drawCount < order.length) {
+    const ensured = order.filter((i) => test.questions[i].ensure);
+    const pool = shuffled(order.filter((i) => !test.questions[i].ensure));
+    order = [...ensured, ...pool.slice(0, Math.max(0, drawCount - ensured.length))].sort((a, b) => a - b);
+  }
   if (shuffleQ) order = shuffled(order);
   const optionOrders = order.map((qIdx) => {
     const q = test.questions[qIdx];
@@ -75,7 +82,7 @@ function finishSession() {
   s.finishedAt = Date.now();
   renderResults();
   const test = getTest(s.testId);
-  recordResult(test ? test.title : '?', s.mode, state.lastSummary.scorePct);
+  recordResult(s.testId, test ? test.title : '?', s.mode, state.lastSummary.scorePct, state.lastSummary.perCategory);
   showView('results');
 }
 
@@ -102,8 +109,8 @@ function resumeSession() {
 
 // ── Import pipeline ──────────────────────────────────────────
 
-function handleRawText(text, source, { onError } = {}) {
-  const result = parseTest(text);
+function handleRawText(text, source, { onError, name } = {}) {
+  const result = parseTest(text, { name });
   if (result.error) {
     if (onError) onError(result.error);
     else showToast(result.error.split('\n')[0]);
@@ -117,7 +124,7 @@ function handleRawText(text, source, { onError } = {}) {
 
 function readFile(file) {
   const reader = new FileReader();
-  reader.onload = () => handleRawText(String(reader.result), 'file');
+  reader.onload = () => handleRawText(String(reader.result), 'file', { name: file.name });
   reader.onerror = () => showToast('Could not read the file');
   reader.readAsText(file);
 }
@@ -130,7 +137,11 @@ function closeModals() { document.querySelectorAll('.modal').forEach((m) => { m.
 function openModeModal(id) {
   pendingTestId = id;
   const t = getTest(id);
-  $('modeTestName').textContent = t ? `${t.title} · ${(t.doc || t).questions.length} questions` : '';
+  const total = t ? (t.doc || t).questions.length : 0;
+  $('modeTestName').textContent = t ? `${t.title} · ${total} questions` : '';
+  $('drawCount').value = '';
+  $('drawCount').max = String(total);
+  $('drawCount').placeholder = String(total);
   openModal('modeModal');
 }
 
@@ -139,6 +150,7 @@ function openModeModal(id) {
 export function initEvents() {
   // Header
   $('loadTestBtn').addEventListener('click', () => { showView('library'); $('dropzone').scrollIntoView({ block: 'center' }); });
+  $('progressBtn').addEventListener('click', () => { renderProgress(); showView('progress'); });
   $('formatBtn').addEventListener('click', () => showView('format'));
   document.querySelectorAll('[data-goto="format"]').forEach((a) =>
     a.addEventListener('click', (e) => { e.preventDefault(); showView('format'); }));
@@ -182,7 +194,12 @@ export function initEvents() {
       if (!pendingTestId) return;
       if (btn.dataset.mode === 'review') { openReview(pendingTestId); return; }
       const mode = btn.dataset.mode === 'exam' ? 'exam' : 'study';
-      const opts = { shuffleQ: $('shuffleQuestions').checked, shuffleO: $('shuffleOptions').checked };
+      const draw = parseInt($('drawCount').value, 10);
+      const opts = {
+        shuffleQ: $('shuffleQuestions').checked,
+        shuffleO: $('shuffleOptions').checked,
+        drawCount: Number.isFinite(draw) && draw > 0 ? draw : null,
+      };
       startSession(pendingTestId, mode, opts);
     }));
 
@@ -263,6 +280,23 @@ export function initEvents() {
     startSession(s.testId, s.mode, { onlyIdxs: missed });
   });
   $('backToLibraryBtn').addEventListener('click', quitSession);
+  $('exportCsvBtn').addEventListener('click', () => {
+    const s = state.session;
+    if (!s) return;
+    const test = getTest(s.testId); const doc = test.doc || test;
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['n', 'category', 'prompt', 'your_answer', 'correct_answer', 'correct', 'points'].join(',')];
+    s.order.forEach((qIdx, pos) => {
+      const q = doc.questions[qIdx];
+      const ok = gradeQuestion(q, s.responses[pos]);
+      rows.push([pos + 1, esc(q.category), esc(q.prompt), esc(responseText(q, s.responses[pos])),
+        esc(correctText(q)), ok ? 'yes' : 'no', q.points].join(','));
+    });
+    rows.push(['', '', esc(`TOTAL ${state.lastSummary.scorePct}%`), '', '', '', `${state.lastSummary.points}/${state.lastSummary.maxPoints}`].join(','));
+    const slug = doc.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    downloadFile(`proctor-${slug}-${new Date().toISOString().slice(0, 10)}.csv`, rows.join('\n'), 'text/csv');
+    showToast('Results CSV downloaded');
+  });
 
   // Format view
   $('copyPromptBtn').addEventListener('click', () => copyText(LLM_PROMPT, 'Prompt copied — add your topic'));
@@ -362,8 +396,8 @@ export function openReview(id) {
 }
 
 /** Start a run directly (embed mode boots through this — no mode modal). */
-export function startRun(id, mode) {
-  startSession(id, mode === 'exam' ? 'exam' : 'study');
+export function startRun(id, mode, { drawCount } = {}) {
+  startSession(id, mode === 'exam' ? 'exam' : 'study', { drawCount });
 }
 
 function selectOption(btn) {

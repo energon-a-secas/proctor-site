@@ -76,8 +76,8 @@ export function getTest(id) {
   return state.samples.find((s) => s.id === id) || null;
 }
 
-export function recordResult(title, mode, scorePct) {
-  state.history.unshift({ title, mode, scorePct, at: Date.now() });
+export function recordResult(id, title, mode, scorePct, cats) {
+  state.history.unshift({ id, title, mode, scorePct, at: Date.now(), cats: cats || null });
   state.history = state.history.slice(0, 50);
   saveState();
 }

@@ -6,7 +6,7 @@ import { state, getTest, getNote } from './state.js';
 import { gradeQuestion, isAnswered, correctText, responseText, summarize } from './grader.js';
 import { formatClock } from './timer.js';
 
-const VIEWS = ['library', 'runner', 'results', 'format', 'review'];
+const VIEWS = ['library', 'runner', 'results', 'format', 'review', 'progress'];
 
 export function showView(name) {
   VIEWS.forEach((v) => { $(`view-${v}`).hidden = v !== name; });
@@ -241,6 +241,90 @@ export function renderResults() {
           ${q.explanation ? `<div class="proctor-review__explanation proctor-md">${mdBlock(q.explanation)}</div>` : ''}
         </div>`;
     }).join('')}`;
+}
+
+// ── Progress: the history, finally on screen ─────────────────
+
+function sparkline(scores) {
+  if (scores.length < 2) return '';
+  const w = 120, h = 30, pad = 2;
+  const pts = scores.map((s, i) => {
+    const x = pad + (i / (scores.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - s / 100) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `
+    <svg class="proctor-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+      <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+}
+
+function relDate(ts) {
+  const d = Math.floor((Date.now() - ts) / 86400000);
+  if (d === 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 30) return `${d}d ago`;
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function renderProgress() {
+  const host = $('progressHost');
+  if (!state.history.length) {
+    host.innerHTML = '<div class="card proctor-empty">Nothing here yet — finish a study or simulator run and it lands here.</div>';
+    return;
+  }
+
+  // Per-test cards: runs grouped by test id (title as fallback for entries
+  // recorded before ids existed), oldest → newest for the trend line
+  const byTest = new Map();
+  state.history.forEach((h) => {
+    const key = h.id || h.title;
+    if (!byTest.has(key)) byTest.set(key, []);
+    byTest.get(key).unshift(h);
+  });
+
+  const cards = [...byTest.values()].map((runs) => {
+    const title = runs[runs.length - 1].title;
+    const scores = runs.map((r) => r.scorePct);
+    const last = runs[runs.length - 1];
+    const best = Math.max(...scores);
+    // Latest run that carries category data
+    const cats = [...runs].reverse().find((r) => r.cats && Object.keys(r.cats).length > 1)?.cats;
+    return `
+      <div class="card proctor-progress-card">
+        <div class="proctor-progress-card__head">
+          <h4>${escHtml(title)}</h4>
+          ${sparkline(scores)}
+        </div>
+        <p class="proctor-progress-card__meta">
+          ${runs.length} run${runs.length > 1 ? 's' : ''} ·
+          last <strong>${last.scorePct}%</strong> (${relDate(last.at)}) ·
+          best <strong>${best}%</strong>
+        </p>
+        ${cats ? Object.entries(cats).map(([cat, c]) => {
+          const pct = Math.round((c.correct / c.total) * 100);
+          return `
+            <div class="proctor-cat">
+              <span class="proctor-cat__name">${escHtml(cat)}</span>
+              <div class="proctor-cat__bar"><div class="proctor-cat__fill" style="width:${pct}%"></div></div>
+              <span class="proctor-cat__score">${c.correct}/${c.total}</span>
+            </div>`;
+        }).join('') : ''}
+      </div>`;
+  }).join('');
+
+  const recent = state.history.slice(0, 15).map((h) => `
+    <div class="proctor-run-row">
+      <span class="proctor-run-row__title">${escHtml(h.title)}</span>
+      <span class="proctor-chip">${h.mode === 'exam' ? 'Simulator' : 'Study'}</span>
+      <span class="proctor-run-row__score ${h.scorePct >= 70 ? 'proctor-run-row__score--good' : ''}">${h.scorePct}%</span>
+      <span class="proctor-run-row__when">${relDate(h.at)}</span>
+    </div>`).join('');
+
+  host.innerHTML = `
+    ${cards}
+    <h3 class="proctor-subhead">Recent runs</h3>
+    <div class="card proctor-runs">${recent}</div>`;
 }
 
 // ── Format view ──────────────────────────────────────────────

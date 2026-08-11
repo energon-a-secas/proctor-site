@@ -53,6 +53,16 @@ export async function copyText(text, label = 'Copied') {
   }
 }
 
+/** Trigger a client-side file download. */
+export function downloadFile(name, text, mime = 'text/plain') {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Base64url helpers for #t= share links (UTF-8 safe). */
 export function b64urlEncode(str) {
   const bytes = new TextEncoder().encode(str);

@@ -45,7 +45,10 @@ spec ships at `/llms.txt` and behind the Format button.
 - **Four question types** -- single answer, multiple answer, true/false, and typed fill-in
 - **Two run modes** -- study (correction after every question) and simulator (timer, flags, submit at the end)
 - **Category breakdown** -- per-topic scores on the results screen, plus retake-missed-only
-- **JSON and YAML** -- built-in YAML subset parser, no dependencies, JSON is canonical
+- **JSON, YAML, Aiken, GIFT, CSV** -- built-in parsers for all five, no dependencies, JSON is canonical; Moodle exports and spreadsheets drop straight in
+- **Draw N** -- run a random slice of a big bank; questions marked `ensure: true` always make the cut
+- **Progress** -- score trend per test (sparkline, best/last), latest category breakdown, and recent-run history -- all from localStorage
+- **Results export** -- per-question CSV (your answer, the correct one, category, points) from the results screen
 - **LLM-ready format** -- one-click prompt copy; paste the model's output straight back in
 - **Share links** -- a whole test travels in the URL fragment, nothing touches a server
 - **Review mode** -- every question fully rendered with the answer key and the why, paginated at your pace (5/10/20/all per page); hide the wrong options for a compact answer sheet, and share the whole test from the same toolbar
@@ -104,6 +107,7 @@ proctor-site/
     ├── app.js          # Entry point: restore, samples, #t= and ?src= import, embed boot
     ├── state.js        # Tests, session, history in localStorage
     ├── md.js           # Markdown subset renderer (escape-first, no deps)
+    ├── formats.js      # Aiken, GIFT-subset, and CSV importers
     ├── parser.js       # JSON + YAML-subset parsing, normalization, validation
     ├── grader.js       # Per-type grading + session summary
     ├── timer.js        # Simulator countdown

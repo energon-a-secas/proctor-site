@@ -1034,3 +1034,40 @@ button:active,
   .proctor-md .md-code { background: #f6f6f6; border-color: #ddd; color: #000; }
   .proctor-embed-bar { display: none; }
 }
+
+/* ── Progress view ───────────────────────────────────────────── */
+.proctor-progress-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); margin-bottom: var(--space-1);
+}
+.proctor-progress-card__head h4 { font-size: var(--text-lg); }
+.proctor-spark { color: var(--accent-bright); flex-shrink: 0; }
+.proctor-progress-card__meta {
+  color: var(--text-muted); font-size: var(--text-sm); margin-bottom: var(--space-3);
+}
+.proctor-runs { display: flex; flex-direction: column; gap: var(--space-2); }
+.proctor-run-row {
+  display: grid; grid-template-columns: 1fr auto 3.5em auto;
+  align-items: center; gap: var(--space-3);
+  font-size: var(--text-sm); color: var(--text-secondary);
+}
+.proctor-run-row__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proctor-run-row__score { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.proctor-run-row__score--good { color: #22c55e; }
+.proctor-run-row__when { color: var(--text-muted); font-size: var(--text-xs); min-width: 5em; text-align: right; }
+
+/* Draw-N control in the mode picker */
+.proctor-draw {
+  display: flex; align-items: center; gap: var(--space-2);
+  color: var(--text-secondary); font-size: var(--text-sm);
+}
+.proctor-draw input {
+  width: 5em;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit; font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+}
+.proctor-draw input:focus { outline: none; border-color: var(--accent); }
