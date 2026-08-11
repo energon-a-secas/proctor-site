@@ -2,7 +2,7 @@
 
 import { $, escHtml } from './utils.js';
 import { mdInline, mdBlock } from './md.js';
-import { state, getTest, getNote } from './state.js';
+import { state, getTest, getNote, weakIdxs } from './state.js';
 import { gradeQuestion, isAnswered, correctText, responseText, summarize } from './grader.js';
 import { formatClock } from './timer.js';
 
@@ -288,6 +288,8 @@ export function renderProgress() {
     const scores = runs.map((r) => r.scorePct);
     const last = runs[runs.length - 1];
     const best = Math.max(...scores);
+    const entry = last.id ? getTest(last.id) : null;
+    const weak = entry ? weakIdxs(last.id, entry.doc || entry).length : 0;
     // Latest run that carries category data
     const cats = [...runs].reverse().find((r) => r.cats && Object.keys(r.cats).length > 1)?.cats;
     return `
@@ -299,7 +301,8 @@ export function renderProgress() {
         <p class="proctor-progress-card__meta">
           ${runs.length} run${runs.length > 1 ? 's' : ''} ·
           last <strong>${last.scorePct}%</strong> (${relDate(last.at)}) ·
-          best <strong>${best}%</strong>
+          best <strong>${best}%</strong>${weak ? ` ·
+          <span class="proctor-weak-chip">${weak} weak question${weak > 1 ? 's' : ''}</span>` : ''}
         </p>
         ${cats ? Object.entries(cats).map(([cat, c]) => {
           const pct = Math.round((c.correct / c.total) * 100);

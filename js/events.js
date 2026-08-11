@@ -2,7 +2,10 @@
 
 import { $, showToast, shuffled, copyText, b64urlEncode, downloadFile } from './utils.js';
 import { mdBlock } from './md.js';
-import { state, saveState, addTest, removeTest, getTest, recordResult, saveNote } from './state.js';
+import {
+  state, saveState, addTest, removeTest, getTest, recordResult, saveNote,
+  recordQuestionStats, weakIdxs,
+} from './state.js';
 import { parseTest } from './parser.js';
 import { isAnswered, gradeQuestion, responseText, correctText } from './grader.js';
 import {
@@ -83,6 +86,13 @@ function finishSession() {
   renderResults();
   const test = getTest(s.testId);
   recordResult(s.testId, test ? test.title : '?', s.mode, state.lastSummary.scorePct, state.lastSummary.perCategory);
+  if (!state.embed && test) {
+    const doc = test.doc || test;
+    recordQuestionStats(s.testId, s.order.map((qIdx, pos) => {
+      const q = doc.questions[qIdx];
+      return { qid: q.id, correct: gradeQuestion(q, s.responses[pos]) };
+    }));
+  }
   showView('results');
 }
 
@@ -142,6 +152,11 @@ function openModeModal(id) {
   $('drawCount').value = '';
   $('drawCount').max = String(total);
   $('drawCount').placeholder = String(total);
+  const weak = t ? weakIdxs(id, t.doc || t) : [];
+  $('weakRow').hidden = weak.length === 0;
+  $('weakCount').textContent = weak.length
+    ? `${weak.length} question${weak.length > 1 ? 's' : ''} you keep missing`
+    : '';
   openModal('modeModal');
 }
 
@@ -181,6 +196,15 @@ export function initEvents() {
     // Close only the paste dialog — handleRawText just opened the mode picker,
     // and closeModals() here would shut it too, making success look like nothing.
     if (ok) $('pasteModal').hidden = true;
+  });
+
+  $('practiceWeakBtn').addEventListener('click', () => {
+    if (!pendingTestId) return;
+    const t = getTest(pendingTestId);
+    const idxs = weakIdxs(pendingTestId, t.doc || t);
+    if (!idxs.length) return;
+    closeModals();
+    startSession(pendingTestId, 'study', { onlyIdxs: idxs });
   });
 
   // Modal close (backdrop, X, Cancel, Esc)

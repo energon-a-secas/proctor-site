@@ -9,6 +9,7 @@ export const state = {
   lastSummary: null,
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
   notes: {},       // testId -> { questionId: "personal note" }
+  stats: {},       // testId -> { questionId: { seen, miss } } across every finished run
   review: { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false },
   embed: false,    // ?embed=1 iframe mode: fully in-memory, never touches storage
 };
@@ -21,6 +22,7 @@ export function saveState() {
       history: state.history,
       session: state.session,
       notes: state.notes,
+      stats: state.stats,
       review: state.review,
     }));
   } catch { /* storage full or blocked — the app still works for this session */ }
@@ -36,6 +38,7 @@ export function loadState() {
     state.session = data.session || null;
     if (state.session && state.session.done) state.session = null;
     state.notes = data.notes || {};
+    state.stats = data.stats || {};
     state.review = { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false, ...(data.review || {}) };
   } catch { /* corrupted storage — start fresh */ }
 }
@@ -80,6 +83,30 @@ export function recordResult(id, title, mode, scorePct, cats) {
   state.history.unshift({ id, title, mode, scorePct, at: Date.now(), cats: cats || null });
   state.history = state.history.slice(0, 50);
   saveState();
+}
+
+/** Fold one finished run into the per-question record: [{ qid, correct }]. */
+export function recordQuestionStats(tid, results) {
+  if (!state.stats[tid]) state.stats[tid] = {};
+  results.forEach(({ qid, correct }) => {
+    const s = state.stats[tid][qid] || { seen: 0, miss: 0 };
+    s.seen += 1;
+    if (!correct) s.miss += 1;
+    state.stats[tid][qid] = s;
+  });
+  saveState();
+}
+
+/** Indices of a test's weak questions: missed in more than half of at least
+ *  two runs — so a question heals off the list once you answer it correctly
+ *  often enough, instead of staying flagged forever. */
+export function weakIdxs(tid, doc) {
+  const stats = state.stats[tid];
+  if (!stats) return [];
+  return doc.questions
+    .map((q, i) => ({ i, s: stats[q.id] }))
+    .filter(({ s }) => s && s.seen >= 2 && s.miss * 2 > s.seen)
+    .map(({ i }) => i);
 }
 
 export function saveNote(tid, qid, text) {
