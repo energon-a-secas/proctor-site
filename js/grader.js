@@ -54,11 +54,19 @@ export function responseText(q, resp) {
   }
 }
 
+/** The three groupings a question can carry, in blueprint order. A test uses
+ *  whichever it declares; every screen that breaks a score down reads this list. */
+export const FACETS = [
+  { key: 'domain', label: 'By domain' },
+  { key: 'subdomain', label: 'By subdomain' },
+  { key: 'category', label: 'By category' },
+];
+
 /** Score a finished session. Order refers to session.order (shuffled indexes). */
 export function summarize(test, session) {
   let points = 0;
   let maxPoints = 0;
-  const perCategory = {};
+  const perFacet = { domain: {}, subdomain: {}, category: {} };
   const missed = [];
 
   session.order.forEach((qIdx, pos) => {
@@ -67,10 +75,16 @@ export function summarize(test, session) {
     maxPoints += q.points;
     if (correct) points += q.points;
     else missed.push(qIdx);
-    const cat = q.category || 'General';
-    perCategory[cat] = perCategory[cat] || { correct: 0, total: 0 };
-    perCategory[cat].total += 1;
-    if (correct) perCategory[cat].correct += 1;
+    FACETS.forEach(({ key }) => {
+      // An unlabelled question only lands in "General" for the facets the test
+      // actually uses — otherwise every test would grow three empty breakdowns.
+      const value = q[key] || (key === 'category' ? 'General' : null);
+      if (!value) return;
+      const bucket = perFacet[key];
+      bucket[value] = bucket[value] || { correct: 0, total: 0 };
+      bucket[value].total += 1;
+      if (correct) bucket[value].correct += 1;
+    });
   });
 
   const scorePct = maxPoints ? Math.round((points / maxPoints) * 100) : 0;
@@ -78,7 +92,7 @@ export function summarize(test, session) {
     scorePct,
     points,
     maxPoints,
-    perCategory,
+    perFacet,
     missed,
     passed: test.passingScore !== null ? scorePct >= test.passingScore : null,
   };

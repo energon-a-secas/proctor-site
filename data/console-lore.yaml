@@ -4,9 +4,20 @@ title: Console Lore
 description: A friendly quiz about video game history
 category: fun
 passingScore: 60
+domains:
+  - name: The machines
+    description: |
+      Console generations from the 8-bit era to the Dreamcast. Shared context
+      lives here once — a per-question preamble would repeat it nine times.
+    subdomains:
+      - Controllers
+      - Generations
+  - name: The people and the games
 questions:
   - type: single
     category: hardware
+    domain: The machines
+    subdomain: Controllers
     prompt: Which console introduced the analog stick as standard equipment?
     options:
       - PlayStation
@@ -17,6 +28,8 @@ questions:
     explanation: The N64 controller shipped with it in 1996; Sony added DualShock a year later
   - type: single
     category: hardware
+    domain: The machines
+    subdomain: Controllers
     prompt: What did the Dreamcast famously build into every controller?
     options:
       - A speaker
@@ -27,6 +40,7 @@ questions:
     explanation: The VMU slotted into the controller and showed game data on its tiny screen
   - type: multi
     category: characters
+    domain: The people and the games
     prompt: Which of these characters debuted in the 1980s?
     options:
       - Mario
@@ -39,17 +53,20 @@ questions:
     explanation: Sonic arrived in 1991 and Kirby in 1992; Mario (1981) and Link (1986) are 80s kids
   - type: truefalse
     category: history
+    domain: The people and the games
     prompt: The first commercially successful home console was made by Atari.
     answer: false
     explanation: The Magnavox Odyssey beat Atari home hardware to market in 1972
   - type: fill
     category: history
+    domain: The people and the games
     prompt: Which company made the Game Boy? One word.
     accept:
       - Nintendo
     explanation: Released in 1989, it survived being the victim of a Gulf War bombing
   - type: single
     category: history
+    domain: The people and the games
     prompt: What was the best-selling game console of all time as of the mid-2020s?
     options:
       - PlayStation 2
@@ -60,11 +77,14 @@ questions:
     explanation: The PS2 sits at roughly 155 million units, with the DS close behind
   - type: truefalse
     category: characters
+    domain: The people and the games
     prompt: Kirby is pink because of a printing error.
     answer: false
     explanation: Sakurai always intended pink; early US box art showed him white, which is the real mix-up
   - type: single
     category: hardware
+    domain: The machines
+    subdomain: Controllers
     prompt: The Switch's detachable controllers are called what?
     options:
       - Joy-Cons

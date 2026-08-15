@@ -21,7 +21,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="https://proctor.neorgon.com/og-preview.jpg">
-  <meta name="neo-version" content="1.5.0">
+  <meta name="neo-version" content="1.6.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
   <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
@@ -92,24 +92,27 @@
           </p>
         </div>
 
+        <div class="stack stack--tight" id="savedSection" hidden>
+          <div class="proctor-railhead">
+            <h3 class="proctor-subhead">Your tests</h3>
+            <span class="proctor-railhead__hint" id="savedCount"></span>
+          </div>
+          <div class="proctor-rail" id="savedGrid"></div>
+        </div>
+
         <div class="proctor-dropzone" id="dropzone" role="button" tabindex="0"
              aria-label="Load a test file (JSON or YAML)">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
             <path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
           </svg>
-          <p><strong>Drop a test file</strong> or click to browse</p>
-          <p class="proctor-dropzone__hint">.json / .yaml — or <button type="button" class="proctor-link" id="pasteBtn">paste it</button></p>
+          <p class="proctor-dropzone__line"><strong>Drop a test file</strong> or click to browse</p>
+          <p class="proctor-dropzone__hint">.json · .yaml · .csv · Aiken · GIFT — or <button type="button" class="proctor-link" id="pasteBtn">paste it</button></p>
           <input type="file" id="fileInput" accept=".json,.yaml,.yml,.txt,.csv,.gift,application/json,text/csv" hidden>
         </div>
 
-        <div class="stack" id="sampleSection">
+        <div class="stack stack--tight" id="sampleSection">
           <h3 class="proctor-subhead">Try a sample</h3>
           <div class="proctor-grid" id="sampleGrid"></div>
-        </div>
-
-        <div class="stack" id="savedSection" hidden>
-          <h3 class="proctor-subhead">Your tests</h3>
-          <div class="proctor-grid" id="savedGrid"></div>
         </div>
       </section>
 
@@ -130,9 +133,10 @@
 
         <div class="card proctor-question" id="questionCard">
           <div class="proctor-question__meta">
-            <span class="proctor-chip proctor-chip--category" id="questionCategory" hidden></span>
+            <div class="proctor-tags" id="questionTags"></div>
             <button type="button" class="btn btn--ghost btn--sm" id="flagBtn" aria-pressed="false" title="Flag for review (F)">Flag</button>
           </div>
+          <div id="questionScenario" hidden></div>
           <div class="proctor-question__prompt proctor-md" id="questionPrompt"></div>
           <p class="proctor-question__hint" id="questionHint"></p>
           <div class="proctor-options" id="optionsHost"></div>
@@ -203,6 +207,8 @@
             <li><code>answers</code> — array of indexes or texts, for <code>multi</code></li>
             <li><code>accept</code> — accepted strings for <code>fill</code>, compared case-insensitively</li>
             <li><code>explanation</code> — the correction shown after answering; write it like feedback, not a citation</li>
+            <li><code>domain</code> / <code>subdomain</code> — the blueprint grouping; chips on each question, filters before a run and in Review, and their own score breakdowns</li>
+            <li><code>domains</code> (top level) — <code>{ name, description, subdomains }</code>. The <code>description</code> is where shared scenario context goes, written <strong>once</strong>: Proctor shows it as a fold-out panel above the question, so it must not be repeated inside each <code>prompt</code></li>
             <li><code>category</code> — free text; scores roll up per category on the results screen</li>
             <li><code>timeLimitMinutes</code>, <code>passingScore</code> — optional, used by simulator mode</li>
             <li>YAML works too: same fields, plain indentation only (no anchors, no inline maps)</li>
@@ -225,26 +231,41 @@
         </div>
 
         <div class="toolbar proctor-review-controls">
-          <label class="proctor-toggle"><input type="checkbox" id="reviewShowAnswers" checked> Answers + why</label>
-          <label class="proctor-toggle"><input type="checkbox" id="reviewShowNotes"> Notes</label>
-          <label class="proctor-toggle" title="Show only the correct answer under each question"><input type="checkbox" id="reviewOnlyCorrect"> Hide wrong options</label>
-          <label class="proctor-perpage">Per page
-            <select id="reviewPerPage">
-              <option value="5">5</option>
-              <option value="10" selected>10</option>
-              <option value="20">20</option>
-              <option value="0">All</option>
-            </select>
-          </label>
+          <div class="proctor-menu" data-menu="visibility">
+            <button type="button" class="btn btn--secondary btn--sm proctor-menu__toggle" id="reviewVisibilityBtn"
+                    aria-expanded="false" aria-haspopup="true" aria-controls="reviewVisibilityPanel">
+              <svg class="proctor-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span class="proctor-menu__name">Visible</span>
+              <span class="proctor-menu__badge" id="reviewVisibilityBadge" hidden></span>
+              <svg class="proctor-menu__chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="proctor-menu__panel" id="reviewVisibilityPanel" role="group" aria-label="What to show on each question" hidden></div>
+          </div>
+          <div class="proctor-menu" data-menu="perpage">
+            <button type="button" class="btn btn--secondary btn--sm proctor-menu__toggle" id="reviewPerPageBtn"
+                    aria-expanded="false" aria-haspopup="true" aria-controls="reviewPerPagePanel">
+              <svg class="proctor-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h10"/>
+              </svg>
+              <span class="proctor-menu__name">Per page</span>
+              <span class="proctor-menu__value" id="reviewPerPageValue"></span>
+              <svg class="proctor-menu__chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="proctor-menu__panel" id="reviewPerPagePanel" role="group" aria-label="Questions per page" hidden></div>
+          </div>
           <button class="btn btn--primary btn--sm" id="reviewPdfBtn" title="Opens the print dialog — choose Save as PDF">Export PDF</button>
           <button class="btn btn--secondary btn--sm" id="reviewShareBtn" title="The whole test travels inside the link — no server, no account">Copy share link</button>
           <button class="btn btn--secondary btn--sm" id="reviewEmbedBtn" title="Iframe snippet for your own site or tool — the test travels inside it">Copy embed code</button>
           <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
         </div>
 
+        <div class="proctor-facets" id="reviewFacets" hidden></div>
+
         <div id="reviewList"></div>
         <div class="proctor-pager" id="reviewPager"></div>
-        <p class="proctor-keys proctor-review-keys">Keys: <kbd>←</kbd><kbd>→</kbd> page · PDF export prints every question, not just this page</p>
+        <p class="proctor-keys proctor-review-keys">Keys: <kbd>←</kbd><kbd>→</kbd> question (turns the page for you) · <kbd>Home</kbd><kbd>End</kbd> first / last · PDF export prints every question, not just this page</p>
       </section>
 
     </div>
@@ -298,6 +319,7 @@
             <span>No quiz: every question with the correct answer, the why, and your notes. Export it all to PDF.</span>
           </button>
         </div>
+        <div class="proctor-facets" id="modeFacets" hidden></div>
         <label class="proctor-toggle"><input type="checkbox" id="shuffleQuestions"> Shuffle questions</label>
         <label class="proctor-toggle"><input type="checkbox" id="shuffleOptions"> Shuffle options</label>
         <label class="proctor-draw" title="Random slice of the bank; questions marked ensure are always included">

@@ -10,9 +10,11 @@ export const state = {
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
   notes: {},       // testId -> { questionId: "personal note" }
   stats: {},       // testId -> { questionId: { seen, miss } } across every finished run
-  review: { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false },
+  review: { perPage: 10, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true },
   embed: false,    // ?embed=1 iframe mode: fully in-memory, never touches storage
 };
+
+export const REVIEW_DEFAULTS = { perPage: 10, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true };
 
 export function saveState() {
   if (state.embed) return;
@@ -39,7 +41,7 @@ export function loadState() {
     if (state.session && state.session.done) state.session = null;
     state.notes = data.notes || {};
     state.stats = data.stats || {};
-    state.review = { perPage: 10, showAnswers: true, showNotes: false, onlyCorrect: false, ...(data.review || {}) };
+    state.review = { ...REVIEW_DEFAULTS, ...(data.review || {}) };
   } catch { /* corrupted storage — start fresh */ }
 }
 
@@ -79,8 +81,11 @@ export function getTest(id) {
   return state.samples.find((s) => s.id === id) || null;
 }
 
-export function recordResult(id, title, mode, scorePct, cats) {
-  state.history.unshift({ id, title, mode, scorePct, at: Date.now(), cats: cats || null });
+/** `cats` is the run's primary breakdown and `facet` names it ('domain' when the
+ *  test uses one, else 'category'). Entries written before facets existed carry
+ *  no `facet` and are read as category breakdowns. */
+export function recordResult(id, title, mode, scorePct, cats, facet) {
+  state.history.unshift({ id, title, mode, scorePct, at: Date.now(), cats: cats || null, facet: facet || 'category' });
   state.history = state.history.slice(0, 50);
   saveState();
 }

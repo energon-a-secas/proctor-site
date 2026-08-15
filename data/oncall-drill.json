@@ -1,0 +1,187 @@
+{
+  "title": "On-Call Drill",
+  "description": "A paging incident, run by the book",
+  "category": "operations",
+  "timeLimitMinutes": 12,
+  "passingScore": 70,
+  "domains": [
+    {
+      "name": "Detection",
+      "description": "The shared setup for this section, stated once: it is 03:10 on a Saturday. `checkout-api` is paging on a 5-minute burn-rate alert against a 99.9% availability SLO. The dashboard shows p99 latency flat, error rate at 4%, and a deploy that finished 20 minutes ago.",
+      "subdomains": ["Alerts", "Signals"]
+    },
+    {
+      "name": "Triage",
+      "description": "Same incident, twelve minutes in. The 4% errors are all HTTP 503 from one of six pods, which is `CrashLoopBackOff` with `OOMKilled` in its last state. Traffic is unchanged from last Saturday.",
+      "subdomains": ["Diagnosis", "Mitigation"]
+    },
+    {
+      "name": "Communication",
+      "description": "The incident is mitigated and you are writing it up. Two other teams consume `checkout-api`, and one customer opened a ticket during the window."
+    }
+  ],
+  "questions": [
+    {
+      "type": "single",
+      "domain": "Detection",
+      "subdomain": "Alerts",
+      "category": "slo",
+      "ensure": true,
+      "prompt": "What does a **burn-rate** alert tell you that a plain threshold alert does not?",
+      "options": [
+        "That the service is down right now",
+        "How fast the error budget is being consumed relative to the window",
+        "Which pod is unhealthy",
+        "That a deploy happened recently"
+      ],
+      "answer": 1,
+      "explanation": "Burn rate is error budget spend per unit time. A 4% error rate is fine for a 99% SLO and an emergency for a 99.99% one — the rate is what makes it actionable"
+    },
+    {
+      "type": "single",
+      "domain": "Detection",
+      "subdomain": "Signals",
+      "category": "triage",
+      "prompt": "p99 latency is flat while errors are at 4%. What does that combination most likely rule out?",
+      "options": [
+        "A bad deploy",
+        "Saturation — a resource-exhaustion slowdown affecting every request",
+        "A dependency outage",
+        "A configuration error"
+      ],
+      "answer": 1,
+      "explanation": "Saturation almost always shows up as latency first. Flat latency with fast failures points at something rejecting requests outright, not something slowing them down"
+    },
+    {
+      "type": "multi",
+      "domain": "Detection",
+      "subdomain": "Signals",
+      "category": "triage",
+      "prompt": "Which of these are worth checking in the first two minutes?",
+      "options": [
+        "The deploy that finished 20 minutes ago",
+        "Whether the error rate is uniform across pods",
+        "The quarterly capacity plan",
+        "Recent config or feature-flag changes"
+      ],
+      "answers": [0, 1, 3],
+      "explanation": "Recent changes and the shape of the failure are cheap to check and narrow the search fast. Capacity planning is a Monday problem"
+    },
+    {
+      "type": "truefalse",
+      "domain": "Detection",
+      "subdomain": "Alerts",
+      "category": "slo",
+      "prompt": "An alert that pages a human should always correspond to something a human can act on right now.",
+      "answer": true,
+      "explanation": "An alert nobody can act on trains people to ignore alerts — which is how the actionable one gets missed"
+    },
+    {
+      "type": "single",
+      "domain": "Triage",
+      "subdomain": "Diagnosis",
+      "category": "kubernetes",
+      "ensure": true,
+      "prompt": "A pod is in `CrashLoopBackOff` with `OOMKilled` as its last state. What happened?\n\n```\nLast State: Terminated\n  Reason:   OOMKilled\n  Exit Code: 137\n```",
+      "options": [
+        "The liveness probe failed and the kubelet restarted it",
+        "The container exceeded its memory limit and the kernel killed it",
+        "The node ran out of disk and evicted it",
+        "The image failed to pull"
+      ],
+      "answer": 1,
+      "explanation": "Exit 137 is SIGKILL (128 + 9). With `OOMKilled`, the container went over its memory limit — a probe failure would show a different reason"
+    },
+    {
+      "type": "single",
+      "domain": "Triage",
+      "subdomain": "Diagnosis",
+      "category": "kubernetes",
+      "prompt": "Only one of six pods is affected, and traffic is unchanged. What does that most suggest?",
+      "options": [
+        "A global memory leak that would eventually hit every pod",
+        "Something local to that pod or its node — a hot shard, a stuck request, a bad neighbour",
+        "An upstream dependency outage",
+        "A DNS failure"
+      ],
+      "answer": 1,
+      "explanation": "A global cause would show up across the fleet. One pod out of six, at steady traffic, points somewhere local — though a slow leak that pod hit first is worth ruling out after mitigation"
+    },
+    {
+      "type": "multi",
+      "domain": "Triage",
+      "subdomain": "Mitigation",
+      "category": "response",
+      "prompt": "Which actions mitigate **now**, before the cause is known?",
+      "options": [
+        "Roll back the 20-minute-old deploy",
+        "Raise the memory limit and let it restart",
+        "Open a ticket for the memory profiling work",
+        "Take the pod out of rotation"
+      ],
+      "answers": [0, 1, 3],
+      "explanation": "Mitigation restores service; diagnosis can wait for daylight. The ticket is the right instinct at the wrong moment"
+    },
+    {
+      "type": "fill",
+      "domain": "Triage",
+      "subdomain": "Diagnosis",
+      "category": "kubernetes",
+      "prompt": "Type the `kubectl` subcommand that shows a pod's recent events and its last termination state.",
+      "accept": ["describe", "kubectl describe", "describe pod"],
+      "explanation": "`kubectl describe pod <name>` prints the event log and Last State — where `OOMKilled` and the exit code live"
+    },
+    {
+      "type": "truefalse",
+      "domain": "Triage",
+      "subdomain": "Mitigation",
+      "category": "response",
+      "prompt": "Rolling back is an admission that the deploy was the cause.",
+      "answer": false,
+      "explanation": "A rollback is a hypothesis test you can afford during an incident. If it does not help, you have ruled something out cheaply"
+    },
+    {
+      "type": "single",
+      "domain": "Communication",
+      "category": "response",
+      "prompt": "What belongs in the first status update, ten minutes in?",
+      "options": [
+        "The root cause",
+        "What is broken, who is affected, what you are doing, and when you will update again",
+        "An apology and a timeline for the fix",
+        "Nothing until the incident is resolved"
+      ],
+      "answer": 1,
+      "explanation": "Impact and the next update time are what readers need. A root cause guessed at ten minutes is usually wrong and gets quoted anyway"
+    },
+    {
+      "type": "single",
+      "domain": "Communication",
+      "category": "response",
+      "ensure": true,
+      "prompt": "Which postmortem finding is most likely to prevent a repeat?",
+      "options": [
+        "\"An engineer set the memory limit too low\"",
+        "\"Nothing catches a limit that is below the observed working set before it reaches production\"",
+        "\"We need to be more careful with limits\"",
+        "\"The alert fired too late\""
+      ],
+      "answer": 1,
+      "explanation": "A finding that names a missing check produces work someone can do. Naming a person, or asking for more care, produces nothing"
+    },
+    {
+      "type": "multi",
+      "domain": "Communication",
+      "category": "response",
+      "prompt": "The customer ticket arrived during the window. Which follow-ups are yours?",
+      "options": [
+        "Confirm whether their failed requests fall inside the incident window",
+        "Close it as duplicate without checking",
+        "Link the ticket to the incident record",
+        "Tell them the root cause before it is established"
+      ],
+      "answers": [0, 2],
+      "explanation": "Match their symptoms against the window and link the record. A cause offered early is a correction owed later"
+    }
+  ]
+}

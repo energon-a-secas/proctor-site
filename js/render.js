@@ -3,7 +3,7 @@
 import { $, escHtml } from './utils.js';
 import { mdInline, mdBlock } from './md.js';
 import { state, getTest, getNote, weakIdxs } from './state.js';
-import { gradeQuestion, isAnswered, correctText, responseText, summarize } from './grader.js';
+import { gradeQuestion, isAnswered, correctText, responseText, summarize, FACETS } from './grader.js';
 import { formatClock } from './timer.js';
 
 const VIEWS = ['library', 'runner', 'results', 'format', 'review', 'progress'];
@@ -11,6 +11,84 @@ const VIEWS = ['library', 'runner', 'results', 'format', 'review', 'progress'];
 export function showView(name) {
   VIEWS.forEach((v) => { $(`view-${v}`).hidden = v !== name; });
   window.scrollTo({ top: 0 });
+}
+
+// ── Facets: domain / subdomain / category ────────────────────
+// A test declares whichever groupings it has. Everything that shows or filters
+// by them reads these helpers, so a test with no groupings renders no chrome.
+
+/** Distinct values of one facet, in document order. */
+export function facetValues(test, key) {
+  if (key === 'domain' && test.domains?.length) return test.domains.map((d) => d.name);
+  const seen = [];
+  test.questions.forEach((q) => { if (q[key] && !seen.includes(q[key])) seen.push(q[key]); });
+  return seen;
+}
+
+/** The facets this test actually groups by — a facet with one value groups nothing. */
+export function usedFacets(test) {
+  return FACETS.map(({ key, label }) => ({ key, label, values: facetValues(test, key) }))
+    .filter((f) => f.values.length > 1);
+}
+
+export function domainInfo(test, name) {
+  if (!name) return null;
+  return test.domains?.find((d) => d.name === name) || null;
+}
+
+/** The domain/subdomain/category chips for one question. */
+export function tagChips(q) {
+  return FACETS
+    .filter(({ key }) => q[key])
+    .map(({ key }) => `<span class="proctor-chip proctor-chip--${key}">${escHtml(q[key])}</span>`)
+    .join('');
+}
+
+/** True when a question passes a { domain: [], subdomain: [], category: [] }
+ *  selection. An empty list for a facet means "every value". */
+export function matchesFilter(q, filter) {
+  return FACETS.every(({ key }) => {
+    const picked = filter[key];
+    return !picked || picked.length === 0 || picked.includes(q[key]);
+  });
+}
+
+/** What Review can show or hide. Every entry is phrased as a thing shown, so
+ *  an unchecked box always means "hidden" — `onlyCorrect`-style inverted names
+ *  read backwards in a menu. `when` keeps an option out of the list entirely
+ *  when the test has nothing for it to act on. */
+export const VISIBILITY = [
+  { key: 'showAnswers', label: 'Answer key', hint: 'the check mark on the correct option' },
+  { key: 'showWhy', label: 'Explanations', hint: 'the "Why" under each question' },
+  { key: 'showWrong', label: 'Wrong options', hint: 'off leaves only the correct one' },
+  { key: 'showNotes', label: 'Your notes', hint: 'editable, markdown' },
+  {
+    key: 'showTags', label: 'Tags', hint: 'domain, subdomain, and category chips',
+    when: (test) => usedFacets(test).length > 0,
+  },
+  {
+    key: 'showScenario', label: 'Scenario', hint: 'the domain heading and its shared context',
+    when: (test) => (test.domains || []).some((d) => d.description),
+  },
+];
+
+/** The options that apply to this test, with their current values. */
+export function visibilityItems(test) {
+  return VISIBILITY.filter((it) => !it.when || it.when(test))
+    .map((it) => ({ ...it, on: state.review[it.key] !== false }));
+}
+
+/** Toggle chips for every facet the test uses. `filter` marks the active ones. */
+export function facetFilterHtml(test, filter) {
+  return usedFacets(test).map(({ key, label, values }) => `
+    <div class="proctor-facet-row">
+      <span class="proctor-facet-row__label">${label.replace('By ', '')}</span>
+      <div class="proctor-facet-row__chips">
+        ${values.map((v) => `
+          <button type="button" class="proctor-facet-chip ${filter[key]?.includes(v) ? 'proctor-facet-chip--on' : ''}"
+                  data-facet="${key}" data-value="${escHtml(v)}" aria-pressed="${!!filter[key]?.includes(v)}">${escHtml(v)}</button>`).join('')}
+      </div>
+    </div>`).join('');
 }
 
 // ── Library ──────────────────────────────────────────────────
@@ -26,12 +104,18 @@ function testCard(t, { sample = false } = {}) {
       <h4>${escHtml(t.title)}</h4>
       ${t.description ? `<p class="proctor-testcard__desc">${escHtml(t.description)}</p>` : ''}
       <p class="proctor-testcard__meta">${meta}</p>
-      <div class="toolbar">
+      <div class="toolbar proctor-testcard__actions">
         <button class="btn btn--primary btn--sm" data-action="start">Start</button>
         <button class="btn btn--secondary btn--sm" data-action="review">Review</button>
         ${sample ? '' : `
-          <button class="btn btn--ghost btn--sm" data-action="share">Copy link</button>
-          <button class="btn btn--ghost btn--sm" data-action="remove" aria-label="Remove ${escHtml(t.title)}">Remove</button>`}
+          <button class="btn btn--ghost btn--sm btn--icon proctor-iconbtn" data-action="share"
+                  title="Copy a share link" aria-label="Copy a share link for ${escHtml(t.title)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+          </button>
+          <button class="btn btn--ghost btn--sm btn--icon proctor-iconbtn" data-action="remove"
+                  title="Remove" aria-label="Remove ${escHtml(t.title)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+          </button>`}
       </div>
     </div>`;
 }
@@ -44,8 +128,10 @@ export function renderLibrary() {
     timeLimit: s.timeLimitMinutes,
   }, { sample: true })).join('') || '<p class="proctor-empty">Samples failed to load — serve the site over HTTP.</p>';
 
+  // Newest first: the test you just imported is the first card in the rail.
   const saved = Object.values(state.tests).sort((a, b) => b.addedAt - a.addedAt);
   $('savedSection').hidden = saved.length === 0 && !state.session;
+  $('savedCount').textContent = saved.length > 1 ? `${saved.length} loaded · newest first` : '';
   let html = saved.map((t) => testCard({ ...t, timeLimit: t.doc.timeLimitMinutes })).join('');
 
   if (state.session && !state.session.done) {
@@ -68,6 +154,10 @@ export function renderLibrary() {
   }
   $('savedGrid').innerHTML = html;
 }
+
+// Inline so the scenario panel needs no network and no icon font.
+const SCENARIO_ICON = `<svg class="proctor-scenario__icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h11l5 5v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path d="M14 5v6h6"/></svg>`;
+const CHEVRON = `<svg class="proctor-scenario__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
 
 // ── Runner ───────────────────────────────────────────────────
 
@@ -118,8 +208,39 @@ export function renderQuestion() {
   } else {
     pace.hidden = true;
   }
-  $('questionCategory').hidden = !q.category;
-  $('questionCategory').textContent = q.category || '';
+  $('questionTags').innerHTML = tagChips(q);
+
+  // The domain's shared scenario, in its own slot instead of copy-pasted into
+  // every prompt. It opens when you arrive in a new domain and stays folded
+  // while you work through it.
+  const scenario = $('questionScenario');
+  const info = domainInfo(test, q.domain);
+  if (info?.description) {
+    const prev = s.pos > 0 ? test.questions[s.order[s.pos - 1]] : null;
+    scenario.hidden = false;
+    // Rebuilt only when the domain changes. renderQuestion runs on every option
+    // click, and rewriting the panel each time would undo a fold the reader
+    // asked for while answering.
+    if (scenario.dataset.domain !== info.name) {
+      scenario.dataset.domain = info.name;
+      const inRun = s.order.filter((idx) => test.questions[idx].domain === q.domain).length;
+      scenario.innerHTML = `
+        <details class="proctor-scenario" ${prev && prev.domain === q.domain ? '' : 'open'}>
+          <summary class="proctor-scenario__head">
+            ${SCENARIO_ICON}
+            <span class="proctor-scenario__label">Scenario</span>
+            <span class="proctor-scenario__name">${escHtml(info.name)}</span>
+            <span class="proctor-scenario__count">${inRun} question${inRun === 1 ? '' : 's'}</span>
+            ${CHEVRON}
+          </summary>
+          <div class="proctor-scenario__body proctor-md">${mdBlock(info.description)}</div>
+        </details>`;
+    }
+  } else {
+    scenario.hidden = true;
+    scenario.innerHTML = '';
+    delete scenario.dataset.domain;
+  }
   $('questionPrompt').innerHTML = mdBlock(q.prompt);
   $('flagBtn').setAttribute('aria-pressed', String(!!s.flags[s.pos]));
   $('flagBtn').classList.toggle('proctor-flagged', !!s.flags[s.pos]);
@@ -209,6 +330,19 @@ export function renderPalette() {
 
 // ── Results ──────────────────────────────────────────────────
 
+/** Score bars for one breakdown: [[name, { correct, total }], …]. */
+function breakdownRows(rows) {
+  return rows.map(([name, c]) => {
+    const pct = Math.round((c.correct / c.total) * 100);
+    return `
+      <div class="proctor-cat">
+        <span class="proctor-cat__name">${escHtml(name)}</span>
+        <div class="proctor-cat__bar"><div class="proctor-cat__fill" style="width:${pct}%"></div></div>
+        <span class="proctor-cat__score">${c.correct}/${c.total}</span>
+      </div>`;
+  }).join('');
+}
+
 export function renderResults() {
   const s = state.session;
   const test = activeTest();
@@ -226,20 +360,13 @@ export function renderResults() {
       ${sum.passed !== null ? `<span class="proctor-chip ${sum.passed ? 'proctor-chip--pass' : 'proctor-chip--fail'}">${sum.passed ? `Passed (needs ${test.passingScore}%)` : `Below the ${test.passingScore}% pass mark`}</span>` : ''}
     </div>`;
 
-  const cats = Object.entries(sum.perCategory);
-  $('categoryBreakdown').innerHTML = cats.length < 2 ? '' : `
-    <h3 class="proctor-subhead">By category</h3>
-    <div class="card">
-      ${cats.map(([cat, c]) => {
-        const pct = Math.round((c.correct / c.total) * 100);
-        return `
-          <div class="proctor-cat">
-            <span class="proctor-cat__name">${escHtml(cat)}</span>
-            <div class="proctor-cat__bar"><div class="proctor-cat__fill" style="width:${pct}%"></div></div>
-            <span class="proctor-cat__score">${c.correct}/${c.total}</span>
-          </div>`;
-      }).join('')}
-    </div>`;
+  $('categoryBreakdown').innerHTML = FACETS.map(({ key, label }) => {
+    const rows = Object.entries(sum.perFacet[key]);
+    if (rows.length < 2) return '';
+    return `
+      <h3 class="proctor-subhead">${label}</h3>
+      <div class="card">${breakdownRows(rows)}</div>`;
+  }).join('');
 
   $('retakeMissedBtn').hidden = sum.missed.length === 0;
   $('reviewHost').innerHTML = `
@@ -307,8 +434,11 @@ export function renderProgress() {
     const best = Math.max(...scores);
     const entry = last.id ? getTest(last.id) : null;
     const weak = entry ? weakIdxs(last.id, entry.doc || entry).length : 0;
-    // Latest run that carries category data
-    const cats = [...runs].reverse().find((r) => r.cats && Object.keys(r.cats).length > 1)?.cats;
+    // Latest run that carries a breakdown — 'facet' names it; runs recorded
+    // before facets existed carry only categories.
+    const withCats = [...runs].reverse().find((r) => r.cats && Object.keys(r.cats).length > 1);
+    const cats = withCats?.cats;
+    const facetLabel = FACETS.find((f) => f.key === (withCats?.facet || 'category'))?.label ?? 'By category';
     return `
       <div class="card proctor-progress-card">
         <div class="proctor-progress-card__head">
@@ -321,15 +451,7 @@ export function renderProgress() {
           best <strong>${best}%</strong>${weak ? ` ·
           <span class="proctor-weak-chip">${weak} weak question${weak > 1 ? 's' : ''}</span>` : ''}
         </p>
-        ${cats ? Object.entries(cats).map(([cat, c]) => {
-          const pct = Math.round((c.correct / c.total) * 100);
-          return `
-            <div class="proctor-cat">
-              <span class="proctor-cat__name">${escHtml(cat)}</span>
-              <div class="proctor-cat__bar"><div class="proctor-cat__fill" style="width:${pct}%"></div></div>
-              <span class="proctor-cat__score">${c.correct}/${c.total}</span>
-            </div>`;
-        }).join('') : ''}
+        ${cats ? `<p class="proctor-progress-card__facet">${facetLabel}</p>${breakdownRows(Object.entries(cats))}` : ''}
       </div>`;
   }).join('');
 
@@ -355,9 +477,19 @@ export const FORMAT_EXAMPLE = `{
   "category": "technical",
   "timeLimitMinutes": 10,
   "passingScore": 70,
+  "domains": [
+    {
+      "name": "Filesystem",
+      "description": "Shared setup for these questions, written ONCE here — never repeated in a prompt. You are on a Linux box in /tmp/work with a docs/ directory.",
+      "subdomains": ["Navigation", "Creating files"]
+    },
+    { "name": "Version control" }
+  ],
   "questions": [
     {
       "type": "single",
+      "domain": "Filesystem",
+      "subdomain": "Navigation",
       "category": "files",
       "prompt": "Which command lists hidden files too?",
       "options": ["ls", "ls -a", "ls -s", "list --all"],
@@ -366,6 +498,8 @@ export const FORMAT_EXAMPLE = `{
     },
     {
       "type": "multi",
+      "domain": "Filesystem",
+      "subdomain": "Creating files",
       "prompt": "Which of these create a directory?",
       "options": ["mkdir docs", "touch docs/", "install -d docs", "cd docs"],
       "answers": [0, 2],
@@ -373,12 +507,15 @@ export const FORMAT_EXAMPLE = `{
     },
     {
       "type": "truefalse",
+      "domain": "Version control",
       "prompt": "In git, HEAD always points at a branch.",
       "answer": false,
       "explanation": "A detached HEAD points at a commit directly"
     },
     {
       "type": "fill",
+      "domain": "Filesystem",
+      "subdomain": "Navigation",
       "prompt": "Type the command that prints the current directory.",
       "accept": ["pwd"],
       "explanation": "pwd = print working directory"
@@ -395,11 +532,39 @@ export function renderFormatView() {
 // Every question is in the DOM; pagination hides off-page items with a class
 // the print stylesheet unhides — so Export PDF always prints the full test.
 
-export const review = { testId: null, page: 0 };
+// The facet selection is per-test and deliberately not persisted — a domain
+// filter means nothing on the next test you open.
+export const review = {
+  testId: null,
+  page: 0,
+  cursor: 0,            // index into the filtered list — what the arrow keys move
+  perPage: 10,          // resolved for this bank; events.js reads it to flip pages
+  visibleCount: 0,
+  filter: { domain: [], subdomain: [], category: [] },
+};
+
+export function resetReviewFilter() {
+  review.filter = { domain: [], subdomain: [], category: [] };
+  review.cursor = 0;
+}
+
+/** Per-page choices sized to the bank: never an option larger than the test.
+ *  0 is "All". A 12-question test offers 5/10/All; a 96-question bank adds 20/25/50. */
+export function perPageSteps(total) {
+  return [...[5, 10, 20, 25, 50, 100, 200].filter((n) => n < total), 0];
+}
+
+/** The saved preference, snapped to a step this bank actually offers. */
+function resolvePerPage(saved, steps) {
+  if (steps.includes(saved)) return saved;
+  return steps.find((n) => n !== 0 && n >= saved) ?? 0;
+}
 
 function reviewOptionRows(q) {
   const { showAnswers } = state.review;
-  const onlyCorrect = showAnswers && state.review.onlyCorrect;
+  // Hiding the wrong options no longer depends on the answer key: leaving one
+  // unmarked option standing reveals the answer either way.
+  const onlyCorrect = state.review.showWrong === false;
   if (q.type === 'fill') {
     return `<p class="proctor-review-accept">Accepted: <strong>${q.accept.map(mdInline).join('</strong> / <strong>')}</strong></p>`;
   }
@@ -424,36 +589,122 @@ function reviewOptionRows(q) {
   }).join('');
 }
 
+/** One row of a dropdown panel. `kind` picks the control; both look the same
+ *  so the two menus in the Review toolbar read as one component. */
+function menuItem({ kind, name, value, label, hint, on }) {
+  return `
+    <label class="proctor-menu__item">
+      <input type="${kind}" ${kind === 'radio' ? `name="${name}"` : ''} data-${name}="${value}" ${on ? 'checked' : ''}>
+      <span class="proctor-menu__text">
+        <span class="proctor-menu__label">${label}</span>
+        ${hint ? `<span class="proctor-menu__hint">${hint}</span>` : ''}
+      </span>
+    </label>`;
+}
+
+/** Per page, as a dropdown button rather than a native select — same block as
+ *  the Visible menu beside it. Steps come from the bank's size. */
+export function renderPerPageMenu(steps, perPage) {
+  $('reviewPerPageValue').textContent = perPage === 0 ? 'All' : String(perPage);
+  $('reviewPerPagePanel').innerHTML = steps.map((n) => menuItem({
+    kind: 'radio', name: 'perpage', value: n, on: n === perPage,
+    label: n === 0 ? 'All on one page' : `${n} questions`,
+    hint: n === 0 ? 'no paging' : null,
+  })).join('');
+}
+
+/** The Visible menu: one checkbox per applicable option, plus a badge counting
+ *  what is currently hidden — the count is what tells you the list is not
+ *  showing everything without opening it. */
+export function renderVisibilityMenu(test) {
+  const items = visibilityItems(test);
+  const hidden = items.filter((it) => !it.on).length;
+  const badge = $('reviewVisibilityBadge');
+  badge.hidden = hidden === 0;
+  badge.textContent = hidden ? String(hidden) : '';
+  $('reviewVisibilityBtn').title = hidden
+    ? `${hidden} of ${items.length} hidden`
+    : 'Everything is showing';
+  $('reviewVisibilityPanel').innerHTML = items.map((it) => menuItem({
+    kind: 'checkbox', name: 'visibility', value: it.key,
+    label: it.label, hint: it.hint, on: it.on,
+  })).join('');
+}
+
 export function renderReview() {
   const entry = getTest(review.testId);
   if (!entry) return;
   const test = entry.doc || entry;
-  const { perPage, showAnswers, showNotes } = state.review;
+  const { showAnswers, showWhy, showNotes, showTags, showScenario } = state.review;
   const total = test.questions.length;
-  const pages = perPage > 0 ? Math.ceil(total / perPage) : 1;
+
+  const facets = usedFacets(test);
+  $('reviewFacets').hidden = facets.length === 0;
+  $('reviewFacets').innerHTML = facets.length ? facetFilterHtml(test, review.filter) : '';
+
+  // Filtering happens before pagination, so "Export PDF" prints the slice you
+  // selected — off-page items stay in the DOM, filtered-out ones do not.
+  const visible = test.questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => matchesFilter(q, review.filter));
+
+  const steps = perPageSteps(visible.length);
+  const perPage = resolvePerPage(state.review.perPage, steps);
+  const pages = perPage > 0 ? Math.max(1, Math.ceil(visible.length / perPage)) : 1;
+  review.perPage = perPage;
+  review.visibleCount = visible.length;
+  if (review.cursor >= visible.length) review.cursor = Math.max(0, visible.length - 1);
   if (review.page >= pages) review.page = pages - 1;
+  if (review.page < 0) review.page = 0;
 
   $('review-title').textContent = test.title;
-  $('reviewCount').textContent = `${total} questions`;
-  $('reviewShowAnswers').checked = showAnswers;
-  $('reviewShowNotes').checked = showNotes;
-  $('reviewOnlyCorrect').checked = state.review.onlyCorrect;
-  $('reviewOnlyCorrect').disabled = !showAnswers;
-  $('reviewPerPage').value = String(perPage);
+  $('reviewCount').textContent = visible.length === total
+    ? `${total} questions`
+    : `${visible.length} of ${total} questions`;
+  renderVisibilityMenu(test);
+  renderPerPageMenu(steps, perPage);
 
-  $('reviewList').innerHTML = test.questions.map((q, i) => {
-    const page = perPage > 0 ? Math.floor(i / perPage) : 0;
+  if (!visible.length) {
+    $('reviewList').innerHTML = '<div class="card proctor-empty">No question matches this filter.</div>';
+    $('reviewPager').innerHTML = '';
+    return;
+  }
+
+  // A domain gets its banner once per page: grouped banks read the same as a
+  // section header, and a bank whose domains interleave does not get one banner
+  // per question — which would be the original bug, moved.
+  const bannered = new Set();
+  $('reviewList').innerHTML = visible.map(({ q, i }, shown) => {
+    const page = perPage > 0 ? Math.floor(shown / perPage) : 0;
+    const offpage = page === review.page ? '' : ' proctor-review-item--offpage';
     const note = getNote(review.testId, q.id);
-    return `
-      <div class="card proctor-review-item ${page === review.page ? '' : 'proctor-review-item--offpage'}" data-qid="${escHtml(q.id)}">
+    // The scenario, carried once instead of pasted in front of every prompt.
+    const info = showScenario ? domainInfo(test, q.domain) : null;
+    let banner = '';
+    if (info && !bannered.has(`${page}::${info.name}`)) {
+      bannered.add(`${page}::${info.name}`);
+      const inDomain = visible.filter(({ q: other }) => other.domain === info.name).length;
+      banner = `
+        <div class="proctor-domain-banner${offpage}">
+          <div class="proctor-domain-banner__head">
+            <span class="proctor-domain-banner__label">Domain</span>
+            <h3 class="proctor-domain-banner__name">${escHtml(info.name)}</h3>
+            <span class="proctor-domain-banner__count">${inDomain} question${inDomain === 1 ? '' : 's'}</span>
+          </div>
+          ${info.description ? `<div class="proctor-domain-banner__desc proctor-md">${mdBlock(info.description)}</div>` : ''}
+        </div>`;
+    }
+    const current = shown === review.cursor ? ' proctor-review-item--current' : '';
+    return `${banner}
+      <div class="card proctor-review-item${offpage}${current}" data-qid="${escHtml(q.id)}" data-shown="${shown}">
         <div class="proctor-review-item__head">
           <span class="proctor-review__n">${i + 1}</span>
-          ${q.category ? `<span class="proctor-chip proctor-chip--category">${escHtml(q.category)}</span>` : ''}
+          ${showTags ? tagChips(q) : ''}
           <span class="proctor-review-item__type">${q.type}</span>
         </div>
         <div class="proctor-review-item__prompt proctor-md">${mdBlock(q.prompt)}</div>
         <div class="proctor-review-opts">${reviewOptionRows(q)}</div>
-        ${showAnswers && q.explanation ? `<div class="proctor-review-item__why proctor-md"><strong>Why:</strong> ${mdBlock(q.explanation)}</div>` : ''}
+        ${showWhy && q.explanation ? `<div class="proctor-review-item__why proctor-md"><strong>Why:</strong> ${mdBlock(q.explanation)}</div>` : ''}
         ${showNotes ? `
           <div class="proctor-review-note">
             <div class="proctor-note-view proctor-md ${note ? '' : 'proctor-note-view--empty'}"

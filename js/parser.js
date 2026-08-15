@@ -129,6 +129,35 @@ function resolveIndex(value, options, qn, what, errors) {
   return idx === -1 ? null : idx;
 }
 
+/** The declared `domains` registry, normalized to [{ name, description, subdomains }].
+ *  Accepts an array of strings or objects, or a map of name -> description|object —
+ *  a plain YAML map is the shape people reach for first. */
+function normalizeDomains(raw) {
+  const entries = [];
+  const push = (name, body) => {
+    const n = String(name ?? '').trim();
+    if (!n) return;
+    const o = body && typeof body === 'object' && !Array.isArray(body) ? body : { description: body };
+    entries.push({
+      name: n,
+      description: o.description ?? o.scenario ?? o.summary ?? null,
+      subdomains: Array.isArray(o.subdomains) ? o.subdomains.map((s) => String(s).trim()).filter(Boolean) : [],
+    });
+  };
+  if (Array.isArray(raw)) {
+    raw.forEach((d) => {
+      if (d && typeof d === 'object') push(d.name ?? d.title ?? d.id, d);
+      else push(d, null);
+    });
+  } else if (raw && typeof raw === 'object') {
+    Object.entries(raw).forEach(([name, body]) => push(name, body));
+  }
+  return entries.map((e) => ({
+    ...e,
+    description: e.description ? String(e.description).trim() : null,
+  }));
+}
+
 function inferType(q) {
   if (q.type) return String(q.type).toLowerCase();
   if (q.accept !== undefined) return 'fill';
@@ -195,6 +224,8 @@ export function normalizeTest(doc) {
       type,
       prompt,
       category: q.category ? String(q.category).trim() : null,
+      domain: q.domain ? String(q.domain).trim() : null,
+      subdomain: q.subdomain ? String(q.subdomain).trim() : null,
       explanation: q.explanation ? String(q.explanation).trim() : null,
       points: typeof q.points === 'number' && q.points > 0 ? q.points : 1,
       ensure: q.ensure === true || q.ensure === 'true',
@@ -228,11 +259,27 @@ export function normalizeTest(doc) {
 
   if (errors.length) return { error: errors.slice(0, 8).join('\n') + (errors.length > 8 ? `\n…and ${errors.length - 8} more` : '') };
 
+  // Domains: declared ones keep their order and descriptions; any domain a
+  // question names without declaring is registered on first appearance, so the
+  // facet filters work whether or not the author wrote the registry.
+  const domains = normalizeDomains(doc.domains);
+  const byName = new Map(domains.map((d) => [d.name.toLowerCase(), d]));
+  questions.forEach((q) => {
+    if (!q.domain) return;
+    let d = byName.get(q.domain.toLowerCase());
+    if (!d) { d = { name: q.domain, description: null, subdomains: [] }; domains.push(d); byName.set(q.domain.toLowerCase(), d); }
+    q.domain = d.name; // one spelling wins, so chips and breakdowns do not split
+    if (q.subdomain && !d.subdomains.some((s) => s.toLowerCase() === q.subdomain.toLowerCase())) {
+      d.subdomains.push(q.subdomain);
+    }
+  });
+
   return {
     test: {
       title,
       description: doc.description ? String(doc.description).trim() : null,
       category: doc.category ? String(doc.category).trim() : null,
+      domains,
       timeLimitMinutes: typeof doc.timeLimitMinutes === 'number' && doc.timeLimitMinutes > 0 ? doc.timeLimitMinutes : null,
       passingScore: typeof doc.passingScore === 'number' ? doc.passingScore : null,
       questions,

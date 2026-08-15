@@ -4,10 +4,21 @@
   "category": "technical",
   "timeLimitMinutes": 10,
   "passingScore": 70,
+  "domains": [
+    {
+      "name": "Filesystem",
+      "description": "Shared setup for this section, written once here instead of at the top of every prompt: you are on a Linux box working in `/tmp/work`, which contains a `docs/` directory and a few dotfiles.",
+      "subdomains": ["Navigation", "Creating files"]
+    },
+    { "name": "Shell", "description": "Plain `bash`, no aliases or functions defined." },
+    { "name": "Version control" }
+  ],
   "questions": [
     {
       "type": "single",
       "category": "files",
+      "domain": "Filesystem",
+      "subdomain": "Navigation",
       "prompt": "Which command lists hidden files too?",
       "options": ["`ls`", "`ls -a`", "`ls -s`", "`list --all`"],
       "answer": 1,
@@ -16,6 +27,8 @@
     {
       "type": "single",
       "category": "files",
+      "domain": "Filesystem",
+      "subdomain": "Navigation",
       "prompt": "You are in /tmp/work. Where does `cd ..` leave you?",
       "options": ["/tmp/work", "/tmp", "/", "Your home directory"],
       "answer": 1,
@@ -24,6 +37,8 @@
     {
       "type": "multi",
       "category": "files",
+      "domain": "Filesystem",
+      "subdomain": "Creating files",
       "prompt": "Which of these create a directory?",
       "options": ["mkdir docs", "touch docs/", "install -d docs", "cd docs"],
       "answers": [0, 2],
@@ -32,6 +47,8 @@
     {
       "type": "fill",
       "category": "files",
+      "domain": "Filesystem",
+      "subdomain": "Navigation",
       "prompt": "Type the command that prints the current directory path.",
       "accept": ["pwd"],
       "explanation": "pwd = print working directory"
@@ -39,6 +56,8 @@
     {
       "type": "single",
       "category": "bash",
+      "domain": "Shell",
+      "subdomain": "Pipelines",
       "prompt": "What does `grep -r TODO src/` do?",
       "options": [
         "Replaces TODO in every file under src/",
@@ -52,6 +71,8 @@
     {
       "type": "truefalse",
       "category": "bash",
+      "domain": "Shell",
+      "subdomain": "Pipelines",
       "prompt": "`command_a | command_b` sends command_a's output to command_b's input.",
       "answer": true,
       "explanation": "That is the pipe: stdout of the left side becomes stdin of the right"
@@ -59,6 +80,8 @@
     {
       "type": "single",
       "category": "bash",
+      "domain": "Shell",
+      "subdomain": "Pipelines",
       "prompt": "Which redirection APPENDS to a file instead of overwriting it?\n\n```bash\necho \"new line\" ?? notes.txt\n```",
       "options": ["`>`", "`>>`", "`<`", "`2>`"],
       "answer": 1,
@@ -67,6 +90,8 @@
     {
       "type": "truefalse",
       "category": "git",
+      "domain": "Version control",
+      "subdomain": "History",
       "prompt": "In git, HEAD always points at a branch.",
       "answer": false,
       "explanation": "A detached HEAD points at a commit directly, which is how checkouts of tags or old commits work"
@@ -74,6 +99,8 @@
     {
       "type": "single",
       "category": "git",
+      "domain": "Version control",
+      "subdomain": "History",
       "prompt": "Which command shows what changed but is NOT staged yet?",
       "options": ["git diff", "git diff --staged", "git status -s", "git log -p"],
       "answer": 0,
@@ -82,6 +109,8 @@
     {
       "type": "fill",
       "category": "git",
+      "domain": "Version control",
+      "subdomain": "History",
       "prompt": "Type the git subcommand that downloads remote changes without merging them.",
       "accept": ["fetch", "git fetch"],
       "explanation": "fetch updates remote-tracking branches; pull is fetch plus merge"

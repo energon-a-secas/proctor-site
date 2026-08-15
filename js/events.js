@@ -11,6 +11,7 @@ import { isAnswered, gradeQuestion, responseText, correctText } from './grader.j
 import {
   showView, renderLibrary, renderRunner, renderQuestion, renderPalette,
   renderResults, renderTimer, FORMAT_EXAMPLE, review, renderReview, renderProgress,
+  usedFacets, facetFilterHtml, matchesFilter, resetReviewFilter,
 } from './render.js';
 import { startTimer, stopTimer } from './timer.js';
 
@@ -24,7 +25,13 @@ Rules:
 - "answer" is a 0-based option index (or the option text); for truefalse it is a boolean.
 - "multi" uses "answers": an array of indexes. "fill" uses "accept": every accepted string.
 - Give every question an "explanation" written as feedback for a wrong answer.
-- Use "category" per question so results break down by topic.
+- Group questions with "domain" (blueprint section or scenario) and "subdomain" (the
+  split inside it). Use "category" for a free topic tag.
+- Shared context — a scenario, a system description, a dataset every question refers
+  to — goes in that domain's "description" in the top-level "domains" list, written
+  ONCE. Never repeat it at the start of each "prompt": Proctor shows the description
+  itself, and a repeated preamble is duplicated on every screen.
+- Each "prompt" contains only what that question asks.
 - 10 to 20 questions, mixed types. "timeLimitMinutes" and "passingScore" are optional.
 
 My topic: `;
@@ -43,11 +50,15 @@ function bookTime() {
   shownAt = Date.now();
 }
 
-function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount, timeLimitMin } = {}) {
+function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount, timeLimitMin, facetFilter } = {}) {
   const entry = getTest(id);
   if (!entry) { showToast('Test not found'); return; }
   const test = entry.doc || entry;
-  let order = onlyIdxs ?? test.questions.map((_, i) => i);
+  // Facet selection narrows the pool first; Draw N then samples what is left.
+  // An empty selection is refused in the mode modal, before it gets here.
+  let order = onlyIdxs ?? test.questions
+    .map((_, i) => i)
+    .filter((i) => !facetFilter || matchesFilter(test.questions[i], facetFilter));
   // Random slice of the bank: "ensure" questions are always in, the rest
   // are drawn by lottery up to the requested count.
   if (!onlyIdxs && drawCount && drawCount < order.length) {
@@ -101,7 +112,11 @@ function finishSession() {
   s.finishedAt = Date.now();
   renderResults();
   const test = getTest(s.testId);
-  recordResult(s.testId, test ? test.title : '?', s.mode, state.lastSummary.scorePct, state.lastSummary.perCategory);
+  // Progress cards chart one breakdown: the domain split when the test has one,
+  // otherwise categories.
+  const sum = state.lastSummary;
+  const facet = Object.keys(sum.perFacet.domain).length > 1 ? 'domain' : 'category';
+  recordResult(s.testId, test ? test.title : '?', s.mode, sum.scorePct, sum.perFacet[facet], facet);
   if (!state.embed && test) {
     const doc = test.doc || test;
     recordQuestionStats(s.testId, s.order.map((qIdx, pos) => {
@@ -163,14 +178,36 @@ function readFile(file) {
 function openModal(id) { $(id).hidden = false; $(id).querySelector('.modal__dialog').focus(); }
 function closeModals() { document.querySelectorAll('.modal').forEach((m) => { m.hidden = true; }); }
 
+/** Which domains/subdomains/categories the next run draws from. Reset per test. */
+let modeFilter = { domain: [], subdomain: [], category: [] };
+
+function pendingDoc() {
+  const t = pendingTestId ? getTest(pendingTestId) : null;
+  return t ? (t.doc || t) : null;
+}
+
+/** Refresh the mode modal's facet chips, pool size, and Draw N bounds. */
+function renderModeFacets() {
+  const doc = pendingDoc();
+  if (!doc) return;
+  const facets = usedFacets(doc);
+  $('modeFacets').hidden = facets.length === 0;
+  $('modeFacets').innerHTML = facets.length ? facetFilterHtml(doc, modeFilter) : '';
+  const pool = doc.questions.filter((q) => matchesFilter(q, modeFilter)).length;
+  $('modeTestName').textContent = pool === doc.questions.length
+    ? `${doc.title} · ${doc.questions.length} questions`
+    : `${doc.title} · ${pool} of ${doc.questions.length} questions selected`;
+  $('drawCount').max = String(pool);
+  $('drawCount').placeholder = String(pool);
+}
+
 function openModeModal(id) {
   pendingTestId = id;
   const t = getTest(id);
-  const total = t ? (t.doc || t).questions.length : 0;
-  $('modeTestName').textContent = t ? `${t.title} · ${total} questions` : '';
+  modeFilter = { domain: [], subdomain: [], category: [] };
   $('drawCount').value = '';
-  $('drawCount').max = String(total);
-  $('drawCount').placeholder = String(total);
+  renderModeFacets();
+  if (!t) $('modeTestName').textContent = '';
   $('timeLimitInput').value = '';
   $('timeLimitInput').placeholder = (t && (t.doc || t).timeLimitMinutes) ? String((t.doc || t).timeLimitMinutes) : 'none';
   const weak = t ? weakIdxs(id, t.doc || t) : [];
@@ -230,14 +267,25 @@ export function initEvents() {
 
   // Modal close (backdrop, X, Cancel, Esc)
   document.querySelectorAll('[data-modal-close]').forEach((el) => el.addEventListener('click', closeModals));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModals(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = Object.entries(MENU_PANELS).find(([, panel]) => !panel.hidden);
+    if (open) { openMenu(null); MENU_TOGGLES[open[0]].focus(); return; }
+    closeModals();
+  });
 
   // Mode modal
   document.querySelectorAll('.proctor-mode-card').forEach((btn) =>
     btn.addEventListener('click', () => {
+      if (!pendingTestId) { closeModals(); return; }
+      if (btn.dataset.mode === 'review') { closeModals(); openReview(pendingTestId); return; }
+      // Refuse an empty selection here, with the modal still open, so the chips
+      // that produced it are one click away from being fixed.
+      const doc = pendingDoc();
+      if (doc && !doc.questions.some((q) => matchesFilter(q, modeFilter))) {
+        showToast('That filter leaves no questions'); return;
+      }
       closeModals();
-      if (!pendingTestId) return;
-      if (btn.dataset.mode === 'review') { openReview(pendingTestId); return; }
       const mode = btn.dataset.mode === 'exam' ? 'exam' : 'study';
       const draw = parseInt($('drawCount').value, 10);
       const rawTime = $('timeLimitInput').value.trim();
@@ -247,9 +295,25 @@ export function initEvents() {
         shuffleO: $('shuffleOptions').checked,
         drawCount: Number.isFinite(draw) && draw > 0 ? draw : null,
         timeLimitMin: rawTime === '' || !Number.isFinite(time) ? null : Math.max(0, time),
+        facetFilter: modeFilter,
       };
       startSession(pendingTestId, mode, opts);
     }));
+
+  // Facet chips: mode modal (narrows the run) and review (narrows the list)
+  $('modeFacets').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-facet]');
+    if (!chip) return;
+    toggleFacet(modeFilter, chip.dataset.facet, chip.dataset.value);
+    renderModeFacets();
+  });
+  $('reviewFacets').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-facet]');
+    if (!chip) return;
+    toggleFacet(review.filter, chip.dataset.facet, chip.dataset.value);
+    review.page = 0;
+    renderReview();
+  });
 
   // Library cards (delegated)
   document.addEventListener('click', (e) => {
@@ -334,14 +398,14 @@ export function initEvents() {
     if (!s) return;
     const test = getTest(s.testId); const doc = test.doc || test;
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['n', 'category', 'prompt', 'your_answer', 'correct_answer', 'correct', 'points', 'seconds'].join(',')];
+    const rows = [['n', 'domain', 'subdomain', 'category', 'prompt', 'your_answer', 'correct_answer', 'correct', 'points', 'seconds'].join(',')];
     s.order.forEach((qIdx, pos) => {
       const q = doc.questions[qIdx];
       const ok = gradeQuestion(q, s.responses[pos]);
-      rows.push([pos + 1, esc(q.category), esc(q.prompt), esc(responseText(q, s.responses[pos])),
+      rows.push([pos + 1, esc(q.domain), esc(q.subdomain), esc(q.category), esc(q.prompt), esc(responseText(q, s.responses[pos])),
         esc(correctText(q)), ok ? 'yes' : 'no', q.points, Math.round(s.times?.[pos] || 0)].join(','));
     });
-    rows.push(['', '', esc(`TOTAL ${state.lastSummary.scorePct}%`), '', '', '', `${state.lastSummary.points}/${state.lastSummary.maxPoints}`].join(','));
+    rows.push(['', '', '', '', esc(`TOTAL ${state.lastSummary.scorePct}%`), '', '', '', `${state.lastSummary.points}/${state.lastSummary.maxPoints}`].join(','));
     const slug = doc.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
     downloadFile(`proctor-${slug}-${new Date().toISOString().slice(0, 10)}.csv`, rows.join('\n'), 'text/csv');
     showToast('Results CSV downloaded');
@@ -353,14 +417,32 @@ export function initEvents() {
   $('backFromFormatBtn').addEventListener('click', () => { showView('library'); });
 
   // Review mode
-  $('reviewShowAnswers').addEventListener('change', (e) => {
-    state.review.showAnswers = e.target.checked; saveState(); renderReview();
+  // Dropdown menus in the Review toolbar — one controller, two menus
+  document.querySelectorAll('.proctor-menu__toggle').forEach((btn) =>
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const name = btn.closest('.proctor-menu').dataset.menu;
+      openMenu(MENU_PANELS[name].hidden ? name : null);
+    }));
+  $('reviewVisibilityPanel').addEventListener('change', (e) => {
+    const key = e.target.dataset.visibility;
+    if (!key) return;
+    state.review[key] = e.target.checked;
+    saveState();
+    renderReview();          // rebuilds the panel; reopening keeps it in place
+    openMenu('visibility');
   });
-  $('reviewShowNotes').addEventListener('change', (e) => {
-    state.review.showNotes = e.target.checked; saveState(); renderReview();
+  $('reviewPerPagePanel').addEventListener('change', (e) => {
+    const n = e.target.dataset.perpage;
+    if (n === undefined) return;
+    state.review.perPage = parseInt(n, 10);
+    review.page = 0;
+    saveState();
+    renderReview();
+    openMenu(null);          // a one-shot choice: picking it is the end of it
   });
-  $('reviewPerPage').addEventListener('change', (e) => {
-    state.review.perPage = parseInt(e.target.value, 10); review.page = 0; saveState(); renderReview();
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.proctor-menu')) openMenu(null);
   });
   $('reviewPager').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-page]');
@@ -371,9 +453,6 @@ export function initEvents() {
     else review.page = parseInt(p, 10);
     renderReview();
     $('reviewList').scrollIntoView({ block: 'start' });
-  });
-  $('reviewOnlyCorrect').addEventListener('change', (e) => {
-    state.review.onlyCorrect = e.target.checked; saveState(); renderReview();
   });
   $('reviewPdfBtn').addEventListener('click', () => window.print());
   $('reviewShareBtn').addEventListener('click', () => {
@@ -404,7 +483,15 @@ export function initEvents() {
   });
   $('reviewList').addEventListener('click', (e) => {
     const view = e.target.closest('.proctor-note-view');
-    if (view && !e.target.closest('a')) openNoteEditor(view);
+    if (view && !e.target.closest('a')) { openNoteEditor(view); return; }
+    // Clicking a question is also how you tell the arrows where to resume from
+    const item = e.target.closest('.proctor-review-item');
+    if (!item || e.target.closest('input, textarea, a, button')) return;
+    const shown = parseInt(item.dataset.shown, 10);
+    if (Number.isFinite(shown) && shown !== review.cursor) {
+      review.cursor = shown;
+      renderReview();
+    }
   });
   $('reviewList').addEventListener('keydown', (e) => {
     const view = e.target.closest('.proctor-note-view');
@@ -429,6 +516,48 @@ export function initEvents() {
   document.addEventListener('keydown', onKey);
 }
 
+// The Review toolbar's dropdowns. Opening one closes the other — two panels
+// overlapping each other is the bug this indirection exists to prevent.
+const MENU_PANELS = {
+  visibility: $('reviewVisibilityPanel'),
+  perpage: $('reviewPerPagePanel'),
+};
+const MENU_TOGGLES = {
+  visibility: $('reviewVisibilityBtn'),
+  perpage: $('reviewPerPageBtn'),
+};
+
+/** Open exactly one menu by name, or none when passed null. */
+function openMenu(name) {
+  Object.entries(MENU_PANELS).forEach(([key, panel]) => {
+    panel.hidden = key !== name;
+    MENU_TOGGLES[key].setAttribute('aria-expanded', String(key === name));
+  });
+}
+
+function toggleFacet(filter, key, value) {
+  const list = filter[key];
+  if (!list) return;
+  const at = list.indexOf(value);
+  if (at === -1) list.push(value);
+  else list.splice(at, 1);
+}
+
+/** Walk the filtered question list one at a time. Crossing a page boundary
+ *  turns the page, so paging is something the arrows do for you rather than a
+ *  separate thing to drive. */
+function moveReviewCursor(delta) {
+  if (!review.visibleCount) return;
+  const next = Math.min(review.visibleCount - 1, Math.max(0, review.cursor + delta));
+  if (next === review.cursor && document.querySelector('.proctor-review-item--current')) return;
+  review.cursor = next;
+  const page = review.perPage > 0 ? Math.floor(next / review.perPage) : 0;
+  if (page !== review.page) review.page = page;
+  renderReview();
+  const el = document.querySelector('.proctor-review-item--current');
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 function openNoteEditor(view) {
   const ta = view.parentElement.querySelector('.proctor-note-input');
   view.hidden = true;
@@ -440,6 +569,8 @@ function openNoteEditor(view) {
 export function openReview(id) {
   review.testId = id;
   review.page = 0;
+  resetReviewFilter();
+  openMenu(null);
   showView('review');
   renderReview();
 }
@@ -494,8 +625,10 @@ function onKey(e) {
   if (!$('view-review').hidden) {
     const typing = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
     if (typing) return;
-    if (e.key === 'ArrowLeft') $('reviewPager').querySelector('[data-page="prev"]')?.click();
-    if (e.key === 'ArrowRight') $('reviewPager').querySelector('[data-page="next"]')?.click();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); moveReviewCursor(-1); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); moveReviewCursor(1); }
+    else if (e.key === 'Home') { e.preventDefault(); moveReviewCursor(-review.visibleCount); }
+    else if (e.key === 'End') { e.preventDefault(); moveReviewCursor(review.visibleCount); }
     return;
   }
   const s = state.session;

@@ -27,6 +27,10 @@ Top-level fields:
 - title (required string)
 - description (string) — one line, shown on the test card
 - category (string) — the test's overall topic
+- domains (array) — the blueprint sections. Each entry is a string, or an object:
+  { "name": "Agent design",
+    "description": "Shared scenario every question in this domain refers to",
+    "subdomains": ["Tool use", "Memory"] }
 - timeLimitMinutes (number) — simulator mode starts a countdown and auto-submits
 - passingScore (number, percent) — results show pass/fail against it
 - questions (required array)
@@ -44,6 +48,10 @@ Question fields:
   compared case-insensitively after trimming ("caseSensitive": true to override)
 - explanation (string) — the correction shown after answering; write it as
   feedback that teaches, not a citation
+- domain (string) — the blueprint section this question belongs to; matches a
+  "domains" entry by name (a domain used here but not declared there still works,
+  it just has no description)
+- subdomain (string) — the split inside that domain
 - category (string) — per-question topic; results aggregate score per category
 - points (number, default 1) — weight in the final score
 - ensure (boolean, default false) — always included when the user runs a
@@ -53,6 +61,33 @@ Question fields:
 Recommendations for generated tests: 10-20 questions, mix the four types, give
 every question an explanation and a category, keep options plausible (the wrong
 options should be believable mistakes, not jokes, unless the test is a fun quiz).
+
+## Shared context belongs to the domain, not the prompt
+
+A scenario, a system description, a dataset, a code listing that several
+questions refer to goes in that domain's "description" — written ONCE:
+
+    {
+      "domains": [{
+        "name": "Multi-agent research system",
+        "description": "A coordinator agent delegates to specialised subagents — web search, document analysis, synthesis, report generation — to produce cited reports.",
+        "subdomains": ["Delegation", "Synthesis"]
+      }],
+      "questions": [
+        { "domain": "Multi-agent research system", "subdomain": "Delegation",
+          "prompt": "Which failure does a shared scratchpad prevent?", "options": [...] }
+      ]
+    }
+
+Proctor renders that description in its own slot: a fold-out panel above the
+question in the runner, and a banner above the group in Review. Do NOT copy the
+scenario into the start of each "prompt" — it then appears in front of every
+question on screen, which is the exact problem these fields exist to solve.
+Each "prompt" holds only what that question asks.
+
+Domains and subdomains also drive the run filter (pick which sections to sit),
+the Review filter, and their own score breakdowns — so they are worth setting
+even when no question needs shared context.
 
 ## Markdown
 
@@ -82,7 +117,8 @@ Beyond JSON/YAML, the importer detects and converts:
   numeric ranges, matching pairs; "%weights%" are read but ignored.
 - CSV: header row names the columns — prompt (or question), options (| separated),
   answer (index, text, or true/false), answers (| separated, for multi),
-  accept (| separated, for fill), explanation, category, type, points.
+  accept (| separated, for fill), explanation, category, domain, subdomain,
+  type, points.
 
 Formats with no title of their own are titled from the file name. JSON stays
 the canonical format — generate JSON unless the source system speaks these.
@@ -99,10 +135,17 @@ with "- ", "key: value" maps, quoted or plain scalars, inline [a, b] arrays, and
 The Review button (also the third card in the mode picker) renders the entire
 test at once: answer key with the ✓ option, the explanation under every question,
 personal notes (markdown, rendered in place — click a note to edit), and a
-paginator (5/10/20/all per page). "Hide wrong options" collapses each question
-to just its correct answer. Export PDF prints the full test — answers,
-corrections, and notes — via the browser's print dialog, regardless of the
-on-screen page. Copy share link puts the whole test in a #t=<base64url(JSON)>
+Per page dropdown whose steps are sized to the bank (never an option larger than
+the test). A "Visible" menu holds every show/hide switch — answer key,
+explanations, wrong options, notes, tags, scenario — with a badge counting what
+is hidden; the facet chips above the list filter it. Left/Right arrows walk the
+list one question at a time and turn the page when they reach the end of one;
+Home/End jump to the first and last.
+
+Export PDF goes through the browser's print dialog and prints every page, not
+just the one on screen — but it does respect the facet filter and the Visible
+switches, so an answer sheet, a blank practice sheet, and one domain on its own
+are all the same button. Copy share link puts the whole test in a #t=<base64url(JSON)>
 URL: no server, no account, the link is the data. Copy embed code produces the
 iframe snippet described below.
 

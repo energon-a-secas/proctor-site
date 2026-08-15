@@ -113,7 +113,7 @@ export function parseGIFT(text) {
 
 // ── CSV ──────────────────────────────────────────────────────
 // Header row names the columns: prompt (or question), options (| separated),
-// answer, answers, accept, explanation, category, type, points.
+// answer, answers, accept, explanation, category, domain, subdomain, type, points.
 
 function csvRows(text) {
   const rows = [];
@@ -160,7 +160,7 @@ export function parseCSV(text) {
     }
     const accept = get(row, 'accept');
     if (accept) q.accept = accept.split('|').map((a) => a.trim()).filter(Boolean);
-    ['explanation', 'category', 'type'].forEach((k) => { const v = get(row, k); if (v) q[k] = v; });
+    ['explanation', 'category', 'domain', 'subdomain', 'type'].forEach((k) => { const v = get(row, k); if (v) q[k] = v; });
     const points = get(row, 'points');
     if (points && /^\d+(\.\d+)?$/.test(points)) q.points = parseFloat(points);
     return q;

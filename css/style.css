@@ -600,11 +600,13 @@ button:active,
 .proctor-empty { color: var(--text-muted); }
 
 /* Dropzone */
+/* A strip, not a landing pad: once you have tests of your own the rail above
+   is the thing you came for, and this only needs to be findable. */
 .proctor-dropzone {
-  border: 2px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
   color: var(--text-secondary);
   cursor: pointer;
   transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
@@ -615,8 +617,30 @@ button:active,
   border-color: var(--accent);
   background: rgba(8, 145, 178, 0.06);
 }
-.proctor-dropzone svg { color: var(--accent-bright); margin-bottom: var(--space-2); }
-.proctor-dropzone__hint { color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-1); }
+.proctor-dropzone svg { color: var(--accent-bright); flex: none; }
+.proctor-dropzone__line { font-size: var(--text-sm); }
+.proctor-dropzone__hint { color: var(--text-muted); font-size: var(--text-xs); margin-left: auto; }
+
+/* Your tests: a horizontal rail, newest first */
+.proctor-railhead { display: flex; align-items: baseline; gap: var(--space-3); }
+.proctor-railhead__hint { color: var(--text-muted); font-size: var(--text-xs); margin-left: auto; }
+.proctor-rail {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  /* Room for the cards' shadow and focus ring, which a plain overflow clips */
+  padding: 4px 4px var(--space-3);
+  margin: -4px -4px calc(var(--space-3) * -1);
+  scrollbar-width: thin;
+}
+.proctor-rail > * {
+  flex: 0 0 clamp(240px, 78vw, 300px);
+  scroll-snap-align: start;
+}
+.proctor-rail::-webkit-scrollbar { height: 8px; }
+.proctor-rail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.proctor-rail::-webkit-scrollbar-track { background: transparent; }
 
 /* Test cards */
 .proctor-grid {
@@ -628,6 +652,10 @@ button:active,
    so Start/Review line up across cards whose text wraps differently. */
 .proctor-testcard { display: flex; flex-direction: column; }
 .proctor-testcard .toolbar { margin-top: auto; }
+/* Keeps Start/Review readable and the secondary pair square, so a rail card's
+   action row stays on one line. */
+.proctor-testcard__actions { flex-wrap: nowrap; }
+.proctor-iconbtn { min-width: var(--control-height-sm); padding: 0; flex: none; }
 .proctor-testcard h4 { font-size: var(--text-lg); margin-bottom: var(--space-1); }
 .proctor-testcard__desc { color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-2); }
 .proctor-testcard__meta { color: var(--text-muted); font-size: var(--text-sm); margin-bottom: var(--space-3); }
@@ -673,6 +701,178 @@ button:active,
 .proctor-chip--category { border-color: var(--accent); color: var(--accent-bright); }
 .proctor-chip--pass { border-color: #22c55e; color: #4ade80; }
 .proctor-chip--fail { border-color: var(--danger); color: var(--danger-hover); }
+/* Blueprint groupings read as a hierarchy: domain solid, subdomain dimmer. */
+.proctor-chip--domain { border-color: var(--text-secondary); color: var(--text-primary); }
+.proctor-chip--subdomain { border-style: dashed; }
+.proctor-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+/* ── Facets: the domain / subdomain / category filter ────────── */
+.proctor-facets { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.proctor-facet-row { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.proctor-facet-row__label {
+  min-width: 78px;
+  color: var(--text-muted); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.proctor-facet-row__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.proctor-facet-chip {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+}
+.proctor-facet-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+.proctor-facet-chip--on {
+  border-color: var(--accent);
+  background: var(--accent-soft, rgba(255, 255, 255, 0.06));
+  color: var(--accent-bright);
+}
+
+/* ── Scenario: the domain description, stated once ─────────────
+   A briefing, not a question: its own plate, its own eyebrow, and a header row
+   that stays readable when the body is folded away. */
+.proctor-scenario {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
+    var(--surface-1);
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+}
+.proctor-scenario__head {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;                 /* the default triangle; a chevron replaces it */
+  user-select: none;
+}
+.proctor-scenario__head::-webkit-details-marker { display: none; }
+.proctor-scenario__head:hover { color: var(--text-primary); }
+.proctor-scenario__head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.proctor-scenario__icon { color: var(--accent-bright); flex: none; }
+.proctor-scenario__label {
+  font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.proctor-scenario__name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  /* A long domain name truncates rather than pushing the count off the row */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.proctor-scenario__count {
+  margin-left: auto;
+  color: var(--text-muted); font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.proctor-scenario__chev { flex: none; color: var(--text-muted); transition: transform var(--dur) var(--ease-out); }
+.proctor-scenario[open] .proctor-scenario__chev { transform: rotate(180deg); }
+.proctor-scenario__body {
+  padding: var(--space-1) var(--space-3) var(--space-3) calc(var(--space-3) + 15px + var(--space-2));
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 2px;
+  padding-top: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Review's equivalent: a section header, since there is nothing to fold */
+.proctor-domain-banner {
+  margin: var(--space-5) 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%), var(--surface-1);
+}
+.proctor-domain-banner__head {
+  display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap;
+}
+.proctor-domain-banner__label {
+  font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.proctor-domain-banner__name { font-size: var(--text-lg); margin: 0; }
+.proctor-domain-banner__count { margin-left: auto; color: var(--text-muted); font-size: var(--text-xs); }
+.proctor-domain-banner__desc {
+  margin-top: var(--space-2);
+  color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.6;
+}
+
+/* ── Visibility menu ──────────────────────────────────────────
+   The show/hide toggles that used to sit loose in the Review toolbar. */
+.proctor-menu { position: relative; }
+.proctor-menu__toggle { display: inline-flex; align-items: center; gap: var(--space-2); }
+.proctor-menu__icon { flex: none; color: var(--text-muted); }
+.proctor-menu__name { font-weight: 600; }
+.proctor-menu__value { color: var(--accent-bright); font-weight: 600; }
+.proctor-menu__chev { flex: none; color: var(--text-muted); transition: transform var(--dur) var(--ease-out); }
+.proctor-menu__toggle[aria-expanded="true"] .proctor-menu__chev { transform: rotate(180deg); }
+.proctor-menu__toggle[aria-expanded="true"] { border-color: var(--accent); }
+.proctor-menu__badge {
+  min-width: 18px; height: 18px;
+  display: inline-grid; place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px; font-weight: 600; line-height: 1;
+}
+.proctor-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 260px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* The surface tokens are translucent by design; a floating panel needs the
+     page colour underneath it or the list reads through the questions below. */
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--surface-2), var(--surface-2));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  animation: proctor-menu-in 0.14s var(--ease-out) both;
+}
+@keyframes proctor-menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.proctor-menu__item {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.proctor-menu__item:hover { background: rgba(255, 255, 255, 0.06); }
+.proctor-menu__item input { margin-top: 3px; flex: none; }
+.proctor-menu__text { display: flex; flex-direction: column; gap: 2px; }
+.proctor-menu__label { color: var(--text-primary); font-size: var(--text-sm); }
+.proctor-menu__hint { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.4; }
+
+/* Narrow screens: anchor the panel to the toolbar rather than to its button.
+   Anchoring to the button pushes the panel off whichever edge the button is
+   near — `right: 0` on a left-hand button hangs it past the left edge. */
+@media (max-width: 600px) {
+  .proctor-review-controls { position: relative; }
+  .proctor-menu { position: static; }
+  .proctor-menu__panel { left: 0; right: 0; min-width: 0; }
+}
+.proctor-progress-card__facet {
+  color: var(--text-muted); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin: var(--space-3) 0 var(--space-2);
+}
 
 /* Question */
 .proctor-question { margin-bottom: var(--space-4); }
@@ -846,19 +1046,13 @@ button:active,
 .container { max-width: 1150px; }
 
 .proctor-review-controls { margin-bottom: var(--space-4); align-items: center; }
-.proctor-perpage {
-  display: flex; align-items: center; gap: var(--space-2);
-  color: var(--text-secondary); font-size: var(--text-sm);
-}
-.proctor-perpage select {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  padding: 4px 8px;
-}
-
 .proctor-review-item { margin-bottom: var(--space-3); }
+/* Where the arrow keys are. Deliberately quiet — it marks a position, it does
+   not claim the question is special. */
+.proctor-review-item--current {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 .proctor-review-item--offpage { display: none; }
 .proctor-review-item__head {
   display: flex; align-items: center; gap: var(--space-2);
@@ -936,11 +1130,24 @@ button:active,
 @media print {
   body { background: #fff; color: #000; display: block; }
   .header-bar, .neo-footer, .proctor-review-controls, .proctor-pager,
-  .proctor-review-keys, .skip-link, #view-library, #view-runner,
+  .proctor-review-keys, .skip-link, .proctor-facets, #view-library, #view-runner,
   #view-results, #view-format, .modal { display: none !important; }
   #view-review { display: block !important; }
   .proctor-runbar__title { color: #000; font-size: 18pt; }
   .proctor-chip, .proctor-progress-label { color: #444; border-color: #bbb; }
+  /* Domain banners print with their questions, off-page ones included */
+  .proctor-domain-banner {
+    display: block !important;
+    break-after: avoid;
+    border: none;
+    border-left: 3px solid #444;
+    border-radius: 0;
+    background: none;
+    padding: 0 0 0 10pt;
+    color: #000;
+  }
+  .proctor-domain-banner__label, .proctor-domain-banner__count { color: #555; }
+  .proctor-domain-banner__name, .proctor-domain-banner__desc { color: #000; }
   .proctor-review-item {
     display: block !important;          /* off-page items print too */
     break-inside: avoid;
@@ -952,6 +1159,8 @@ button:active,
     margin-bottom: 10pt;
   }
   .proctor-review-item__prompt { color: #000; }
+  /* The arrow-key cursor is a screen affordance; on paper it is just noise */
+  .proctor-review-item--current { box-shadow: none; }
   .proctor-review-opt { color: #333; border-color: #ddd; }
   .proctor-review-opt--correct {
     color: #000; border-color: #16a34a; background: #f0fdf4;

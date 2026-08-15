@@ -6,7 +6,7 @@ import { initEvents, startRun, openReview } from './events.js';
 import { renderLibrary, renderFormatView } from './render.js';
 import { showToast, b64urlDecode, escHtml } from './utils.js';
 
-const SAMPLES = ['data/terminal-basics.json', 'data/console-lore.yaml'];
+const SAMPLES = ['data/terminal-basics.json', 'data/console-lore.yaml', 'data/oncall-drill.json'];
 
 const params = new URLSearchParams(location.search);
 const EMBED = params.get('embed') === '1';
