@@ -14,6 +14,12 @@
   --footer-pad-block-content: 40px;
   --footer-max-w: 1100px;
   --footer-control-h: 32px;
+  /* One line of footer copy, and the WCAG 2.5.8 minimum a bar target has to
+     reach. They are tokens because the bar compensates its target boxes
+     against the line height exactly — see .neo-footer-bar a below — and a
+     hand-edited `line-height: 1.7` would silently put that compensation out. */
+  --footer-line: 1.7;
+  --footer-target: 24px;
 
   /* Palette — inherits the header theme tokens so ?theme=matrix and the
      fleet-wide season.css re-skin the footer too. Fallbacks keep the kit
@@ -83,7 +89,7 @@ body.neo-footer-root {
   border-top: 1px solid var(--footer-border);
   color: var(--footer-text);
   font-size: .78rem;
-  line-height: 1.7;
+  line-height: var(--footer-line);
   text-align: center;
 }
 
@@ -126,6 +132,30 @@ body.neo-footer-root {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
+}
+
+/* Target size — WCAG 2.5.8 (Minimum, 24x24). Bar links are standalone
+   controls in a row, not links inside a sentence, so the inline exception
+   does not cover them: they measured ~84x20 and ~37x20.
+
+   Each one is grown to a 24px box and handed the difference straight back as
+   negative block margin, so the item's *margin* box still measures exactly one
+   line and the bar does not get taller. That matters here more than usual —
+   `minimal` is tuned to ~70px against the .info-footer it replaced and `app`
+   to ~50px, and this row is what sets both. The text keeps the baseline it
+   had; only the hit area grows, ~2px above and below the line.
+
+   min() clamps the compensation at zero, so a site that sets a line taller
+   than the 24px minimum keeps its own spacing instead of being pulled tight.
+   Sized in em, not px, because `app` mode runs a smaller font than the rest. */
+.neo-footer-bar a,
+.neo-footer-bar .neo-footer-disclaimer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--footer-target);
+  min-width: var(--footer-target);
+  margin-block: min(0px, calc((var(--footer-line) * 1em - var(--footer-target)) / 2));
 }
 
 .neo-footer-sep { opacity: .4; user-select: none; }
@@ -479,6 +509,15 @@ body.neo-footer-root {
     page-break-inside: avoid;
   }
   .neo-footer a { color: #000; text-decoration: underline; }
+  /* Paper has no pointers, so the 24px target boxes come off — and they have
+     to: inside an inline-flex link the expanded href below would be laid out
+     as a second flex item beside the label instead of flowing after it. */
+  .neo-footer-bar a {
+    display: inline;
+    min-height: 0;
+    min-width: 0;
+    margin-block: 0;
+  }
   .neo-footer a[href^="http"]::after {
     content: " (" attr(href) ")";
     font-size: .9em;
