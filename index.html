@@ -144,6 +144,7 @@
             <p class="proctor-feedback__verdict" id="feedbackVerdict"></p>
             <div class="proctor-feedback__explanation proctor-md" id="feedbackExplanation"></div>
           </div>
+          <div class="proctor-question__note" id="questionNote"></div>
         </div>
 
         <div class="proctor-nav">
@@ -255,9 +256,39 @@
             </button>
             <div class="proctor-menu__panel" id="reviewPerPagePanel" role="group" aria-label="Questions per page" hidden></div>
           </div>
-          <button class="btn btn--primary btn--sm" id="reviewPdfBtn" title="Opens the print dialog — choose Save as PDF">Export PDF</button>
-          <button class="btn btn--secondary btn--sm" id="reviewShareBtn" title="The whole test travels inside the link — no server, no account">Copy share link</button>
-          <button class="btn btn--secondary btn--sm" id="reviewEmbedBtn" title="Iframe snippet for your own site or tool — the test travels inside it">Copy embed code</button>
+          <div class="proctor-menu" data-menu="share">
+            <button type="button" class="btn btn--primary btn--sm proctor-menu__toggle" id="reviewShareMenuBtn"
+                    aria-expanded="false" aria-haspopup="true" aria-controls="reviewSharePanel">
+              <svg class="proctor-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3m0 0L8 7m4-4 4 4"/>
+              </svg>
+              <span class="proctor-menu__name">Share</span>
+              <svg class="proctor-menu__chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="proctor-menu__panel proctor-menu__panel--actions" id="reviewSharePanel" hidden>
+              <button type="button" class="proctor-menu__action" id="reviewShareBtn">
+                <span class="proctor-menu__label">Copy share link</span>
+                <span class="proctor-menu__hint">the whole test rides in the URL — no server, no account</span>
+              </button>
+              <button type="button" class="proctor-menu__action" id="reviewEmbedBtn">
+                <span class="proctor-menu__label">Copy embed code</span>
+                <span class="proctor-menu__hint">an iframe snippet for any other page</span>
+              </button>
+              <button type="button" class="proctor-menu__action" id="reviewPdfBtn">
+                <span class="proctor-menu__label">Export PDF</span>
+                <span class="proctor-menu__hint">the print dialog — every page, filters and Visible applied</span>
+              </button>
+              <button type="button" class="proctor-menu__action" id="reviewJsonBtn">
+                <span class="proctor-menu__label">Download JSON</span>
+                <span class="proctor-menu__hint">the test plus your notes — reloadable, and never in a share link</span>
+              </button>
+              <button type="button" class="proctor-menu__action" id="reviewMdBtn">
+                <span class="proctor-menu__label">Download Markdown</span>
+                <span class="proctor-menu__hint">answers, explanations, and your notes as readable text</span>
+              </button>
+            </div>
+          </div>
+          <button class="btn btn--secondary btn--sm" id="reviewEditBtn" title="Edit this test's JSON in place — notes and history survive">Edit source</button>
           <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
         </div>
 
@@ -289,6 +320,30 @@
       <footer class="modal__footer">
         <button type="button" class="btn btn--ghost" data-modal-close>Cancel</button>
         <button type="button" class="btn btn--primary" id="pasteLoadBtn">Load</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Source editor modal -->
+  <div class="modal" id="editModal" hidden>
+    <div class="modal__backdrop" data-modal-close tabindex="-1" aria-hidden="true"></div>
+    <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" tabindex="-1">
+      <header class="modal__header">
+        <h2 id="editModalTitle">Edit source</h2>
+        <button type="button" class="btn btn--ghost btn--icon" data-modal-close aria-label="Close dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+      <div class="modal__body">
+        <p class="proctor-edit-note" id="editNote"></p>
+        <textarea class="proctor-textarea proctor-textarea--tall" id="editInput" rows="20" spellcheck="false"
+                  aria-label="Test source (JSON or YAML)"></textarea>
+        <p class="proctor-error" id="editError" hidden></p>
+      </div>
+      <footer class="modal__footer">
+        <button type="button" class="btn btn--ghost" id="editCopyBtn">Copy JSON</button>
+        <button type="button" class="btn btn--ghost" data-modal-close>Cancel</button>
+        <button type="button" class="btn btn--primary" id="editSaveBtn">Save changes</button>
       </footer>
     </div>
   </div>

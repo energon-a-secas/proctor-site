@@ -858,6 +858,21 @@ button:active,
 .proctor-menu__item input { margin-top: 3px; flex: none; }
 .proctor-menu__text { display: flex; flex-direction: column; gap: 2px; }
 .proctor-menu__label { color: var(--text-primary); font-size: var(--text-sm); }
+/* Action rows: same anatomy as the checkbox rows, no control in front */
+.proctor-menu__panel--actions { min-width: 300px; }
+.proctor-menu__action {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.proctor-menu__action:hover { background: rgba(255, 255, 255, 0.06); }
+.proctor-menu__action:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .proctor-menu__hint { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.4; }
 
 /* Narrow screens: anchor the panel to the toolbar rather than to its button.
@@ -1045,7 +1060,24 @@ button:active,
    deliberately short of full-stretch. */
 .container { max-width: 1150px; }
 
-.proctor-review-controls { margin-bottom: var(--space-4); align-items: center; }
+/* Sticky: on a 96-question bank the controls are otherwise a scroll away the
+   moment you start reading. Static on narrow screens, where the wrapped rows
+   would eat half the viewport. */
+.proctor-review-controls {
+  position: sticky;
+  /* Under the header, not behind it — the kit publishes its live height, and
+     app-mode headers change height as they auto-hide. */
+  top: var(--header-h-cur, 56px);
+  z-index: 25;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) 0;
+  align-items: center;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+@media (max-width: 600px) {
+  .proctor-review-controls { position: static; border-bottom: none; }
+}
 .proctor-review-item { margin-bottom: var(--space-3); }
 /* Where the arrow keys are. Deliberately quiet — it marks a position, it does
    not claim the question is special. */
@@ -1087,6 +1119,22 @@ button:active,
   line-height: 1.55;
 }
 .proctor-review-note { margin-top: var(--space-3); }
+/* The note block, wherever it appears */
+.proctor-question__note { margin-top: var(--space-4); }
+.proctor-question__note .proctor-note-view,
+.proctor-review .proctor-note-view {
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--space-2);
+}
+.proctor-note-view {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: text;
+  border-radius: var(--radius-sm);
+}
+.proctor-note-view--empty { color: var(--text-muted); font-style: italic; }
+.proctor-note-view:hover { color: var(--text-primary); }
+.proctor-note-view:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .proctor-note-input {
   width: 100%;
   background: var(--surface-1);
@@ -1123,6 +1171,14 @@ button:active,
   cursor: pointer;
 }
 .proctor-pager__num--current { outline: 2px solid var(--accent); color: var(--text-primary); }
+.proctor-pager__gap { color: var(--text-muted); padding: 0 var(--space-1); }
+
+.proctor-edit-note {
+  color: var(--text-muted); font-size: var(--text-xs); line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+.proctor-edit-note--warn { color: var(--danger-hover); }
+.proctor-textarea--tall { min-height: 46vh; }
 
 /* ── Print = the PDF export ──────────────────────────────────
    window.print() + "Save as PDF". Every question prints regardless of the

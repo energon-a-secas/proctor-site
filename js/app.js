@@ -59,7 +59,7 @@ function importFromUrl() {
       const parsed = parseTest(b64urlDecode(hash[1]));
       if (parsed.error) throw new Error(parsed.error);
       if (!EMBED) history.replaceState(null, '', location.pathname);
-      const id = addTest(parsed.test, 'link');
+      const id = addTest(parsed.test, 'link', parsed.notes);
       renderLibrary();
       if (EMBED) onImported(parsed.test, id);
       else showToast(`Loaded "${parsed.test.title}" from the link`);
@@ -71,7 +71,7 @@ function importFromUrl() {
     fetch(src).then((r) => r.text()).then((text) => {
       const parsed = parseTest(text);
       if (parsed.error) { showToast(parsed.error.split('\n')[0]); return; }
-      const id = addTest(parsed.test, 'url');
+      const id = addTest(parsed.test, 'url', parsed.notes);
       renderLibrary();
       if (EMBED) onImported(parsed.test, id);
       else showToast(`Loaded "${parsed.test.title}"`);

@@ -57,9 +57,11 @@ spec ships at `/llms.txt` and behind the Format button.
 - **LLM-ready format** -- one-click prompt copy; paste the model's output straight back in
 - **Share links** -- a whole test travels in the URL fragment, nothing touches a server
 - **Review mode** -- every question fully rendered with the answer key and the why, paginated at your pace (steps sized to the bank -- a 96-question bank offers 5/10/20/25/50/all, a 12-question test offers 5/10/all), and walked with the arrow keys, which turn the page for you
-- **One Visible menu** -- answer key, explanations, wrong options, notes, tags, and scenario are switches in a single dropdown with a badge counting what is hidden; Export PDF prints every page, but respects those switches and the filter -- an answer sheet and a blank practice sheet are the same button. Per page is the same dropdown block beside it
+- **One Visible menu** -- question text, answer key, explanations, wrong options, notes, tags, and scenario are switches in a single dropdown with a badge counting what is hidden. Hide the question text for a compact key, or to drill in reverse from the options; Export PDF prints every page, but respects those switches and the filter -- an answer sheet and a blank practice sheet are the same button. Per page is the same dropdown block beside it
 - **Markdown everywhere** -- prompts, options, explanations, and notes render a safe subset: fenced code blocks, inline code, bold, italic, links, lists
-- **Notes and PDF** -- annotate any question with markdown notes (rendered in place, click to edit), then export the whole test (answers, corrections, notes) to PDF via the print dialog
+- **Notes wherever you are** -- annotate a question while you sit the test, on the results recap, or in Review; one note per question, markdown, rendered in place and click to edit. Review's "Noted (N)" chip filters to just those, so a thought written at 1am is findable later
+- **Edit source** -- fix a typo or a wrong answer key in place, under the test's existing id, so its notes, per-question stats and run history survive. A remove-and-reimport loses all three, because the id is a content hash
+- **Three ways out** -- PDF via the print dialog, JSON with your notes folded in (and lifted back out on import), or readable Markdown with domain headings, the answer key, explanations and notes. Share links deliberately carry none of your notes
 - **Embeddable** -- one iframe snippet runs a full test inside any other site or tool (`?embed=1&mode=study#t=...`), chromeless and stateless; Review has a Copy embed code button
 - **Local by design** -- tests, sessions, notes, and history live in localStorage only; embed runs write nothing at all
 

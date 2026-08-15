@@ -3,7 +3,7 @@
 import { $, showToast, shuffled, copyText, b64urlEncode, downloadFile } from './utils.js';
 import { mdBlock } from './md.js';
 import {
-  state, saveState, addTest, removeTest, getTest, recordResult, saveNote,
+  state, saveState, addTest, removeTest, updateTest, getTest, recordResult, saveNote,
   recordQuestionStats, weakIdxs,
 } from './state.js';
 import { parseTest } from './parser.js';
@@ -12,6 +12,7 @@ import {
   showView, renderLibrary, renderRunner, renderQuestion, renderPalette,
   renderResults, renderTimer, FORMAT_EXAMPLE, review, renderReview, renderProgress,
   usedFacets, facetFilterHtml, matchesFilter, resetReviewFilter,
+  testWithNotes, testAsMarkdown,
 } from './render.js';
 import { startTimer, stopTimer } from './timer.js';
 
@@ -160,7 +161,7 @@ function handleRawText(text, source, { onError, name } = {}) {
     else showToast(result.error.split('\n')[0]);
     return false;
   }
-  const id = addTest(result.test, source);
+  const id = addTest(result.test, source, result.notes);
   renderLibrary();
   openModeModal(id);
   return true;
@@ -269,8 +270,12 @@ export function initEvents() {
   document.querySelectorAll('[data-modal-close]').forEach((el) => el.addEventListener('click', closeModals));
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    const open = Object.entries(MENU_PANELS).find(([, panel]) => !panel.hidden);
-    if (open) { openMenu(null); MENU_TOGGLES[open[0]].focus(); return; }
+    if (openMenuIsVisible()) {
+      const menu = [...document.querySelectorAll('.proctor-menu')].find((m) => !m.querySelector('.proctor-menu__panel').hidden);
+      openMenu(null);
+      menu?.querySelector('.proctor-menu__toggle')?.focus();
+      return;
+    }
     closeModals();
   });
 
@@ -418,19 +423,20 @@ export function initEvents() {
 
   // Review mode
   // Dropdown menus in the Review toolbar — one controller, two menus
-  document.querySelectorAll('.proctor-menu__toggle').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const name = btn.closest('.proctor-menu').dataset.menu;
-      openMenu(MENU_PANELS[name].hidden ? name : null);
-    }));
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.proctor-menu__toggle');
+    if (!btn) return;
+    e.stopPropagation();
+    const menu = btn.closest('.proctor-menu');
+    openMenu(menu.querySelector('.proctor-menu__panel').hidden ? menu : null);
+  });
   $('reviewVisibilityPanel').addEventListener('change', (e) => {
     const key = e.target.dataset.visibility;
     if (!key) return;
     state.review[key] = e.target.checked;
     saveState();
     renderReview();          // rebuilds the panel; reopening keeps it in place
-    openMenu('visibility');
+    openMenu(menuByName('visibility'));
   });
   $('reviewPerPagePanel').addEventListener('change', (e) => {
     const n = e.target.dataset.perpage;
@@ -454,8 +460,32 @@ export function initEvents() {
     renderReview();
     $('reviewList').scrollIntoView({ block: 'start' });
   });
-  $('reviewPdfBtn').addEventListener('click', () => window.print());
+  $('reviewPdfBtn').addEventListener('click', () => { openMenu(null); window.print(); });
+
+  // Downloads: the filtered slice, with your notes in it
+  $('reviewJsonBtn').addEventListener('click', () => {
+    openMenu(null);
+    const doc = reviewDoc();
+    if (!doc) return;
+    downloadFile(exportName(doc.test, 'json'), JSON.stringify(testWithNotes(review.testId, {
+      ...doc.test, questions: doc.questions,
+    }), null, 2), 'application/json');
+    showToast('JSON downloaded — notes included');
+  });
+  $('reviewMdBtn').addEventListener('click', () => {
+    openMenu(null);
+    const doc = reviewDoc();
+    if (!doc) return;
+    downloadFile(exportName(doc.test, 'md'), testAsMarkdown(review.testId, doc.test, doc.questions), 'text/markdown');
+    showToast('Markdown downloaded');
+  });
+
+  // Edit source — replaces the document in place, keeping the test's id
+  $('reviewEditBtn').addEventListener('click', () => openEditor(review.testId));
+  $('editCopyBtn').addEventListener('click', () => copyText($('editInput').value, 'JSON copied'));
+  $('editSaveBtn').addEventListener('click', saveEditor);
   $('reviewShareBtn').addEventListener('click', () => {
+    openMenu(null);
     const entry = getTest(review.testId);
     if (!entry) return;
     const encoded = b64urlEncode(JSON.stringify(entry.doc || entry));
@@ -464,6 +494,7 @@ export function initEvents() {
   });
   $('reviewBackBtn').addEventListener('click', () => { showView('library'); renderLibrary(); });
   $('reviewEmbedBtn').addEventListener('click', () => {
+    openMenu(null);
     const entry = getTest(review.testId);
     if (!entry) return;
     const doc = entry.doc || entry;
@@ -473,18 +504,20 @@ export function initEvents() {
     const snippet = `<iframe src="${src}"\n  width="100%" height="640" loading="lazy" style="border:0;border-radius:12px"\n  title="${doc.title.replace(/"/g, '&quot;')} — Proctor"></iframe>`;
     copyText(snippet, 'Embed code copied — paste it into any page');
   });
-  // Notes: rendered by default, click to edit; markdown renders on blur
+  // Notes: one implementation for the runner, the results recap, and Review.
+  // Each block carries its own test and question id, so these listeners live on
+  // the document rather than on any one view's container.
   let noteTimer = null;
-  $('reviewList').addEventListener('input', (e) => {
-    if (!e.target.classList.contains('proctor-note-input')) return;
-    const item = e.target.closest('[data-qid]');
+  document.addEventListener('input', (e) => {
+    const block = e.target.classList?.contains('proctor-note-input') ? e.target.closest('.proctor-note') : null;
+    if (!block) return;
     clearTimeout(noteTimer);
-    noteTimer = setTimeout(() => saveNote(review.testId, item.dataset.qid, e.target.value), 400);
+    noteTimer = setTimeout(() => saveNote(block.dataset.noteTest, block.dataset.noteQid, e.target.value), 400);
   });
-  $('reviewList').addEventListener('click', (e) => {
+  document.addEventListener('click', (e) => {
     const view = e.target.closest('.proctor-note-view');
     if (view && !e.target.closest('a')) { openNoteEditor(view); return; }
-    // Clicking a question is also how you tell the arrows where to resume from
+    // In Review, clicking a question also tells the arrows where to resume from
     const item = e.target.closest('.proctor-review-item');
     if (!item || e.target.closest('input, textarea, a, button')) return;
     const shown = parseInt(item.dataset.shown, 10);
@@ -493,18 +526,18 @@ export function initEvents() {
       renderReview();
     }
   });
-  $('reviewList').addEventListener('keydown', (e) => {
-    const view = e.target.closest('.proctor-note-view');
+  document.addEventListener('keydown', (e) => {
+    const view = e.target.closest?.('.proctor-note-view');
     if (view && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openNoteEditor(view); }
   });
-  $('reviewList').addEventListener('focusout', (e) => {
-    if (!e.target.classList.contains('proctor-note-input')) return;
-    const item = e.target.closest('[data-qid]');
+  document.addEventListener('focusout', (e) => {
+    const block = e.target.classList?.contains('proctor-note-input') ? e.target.closest('.proctor-note') : null;
+    if (!block) return;
     const text = e.target.value;
     clearTimeout(noteTimer);
-    saveNote(review.testId, item.dataset.qid, text);
-    const view = item.querySelector('.proctor-note-view');
-    const print = item.querySelector('.proctor-note-print');
+    saveNote(block.dataset.noteTest, block.dataset.noteQid, text);
+    const view = block.querySelector('.proctor-note-view');
+    const print = block.querySelector('.proctor-note-print');
     view.classList.toggle('proctor-note-view--empty', !text.trim());
     view.innerHTML = text.trim() ? mdBlock(text) : 'Add a note — markdown works here';
     if (print) print.innerHTML = mdBlock(text);
@@ -516,26 +549,28 @@ export function initEvents() {
   document.addEventListener('keydown', onKey);
 }
 
-// The Review toolbar's dropdowns. Opening one closes the other — two panels
-// overlapping each other is the bug this indirection exists to prevent.
-const MENU_PANELS = {
-  visibility: $('reviewVisibilityPanel'),
-  perpage: $('reviewPerPagePanel'),
-};
-const MENU_TOGGLES = {
-  visibility: $('reviewVisibilityBtn'),
-  perpage: $('reviewPerPageBtn'),
-};
-
-/** Open exactly one menu by name, or none when passed null. */
-function openMenu(name) {
-  Object.entries(MENU_PANELS).forEach(([key, panel]) => {
-    panel.hidden = key !== name;
-    MENU_TOGGLES[key].setAttribute('aria-expanded', String(key === name));
+// Every dropdown on the page is a `.proctor-menu`; opening one closes the rest.
+// Driven off the DOM rather than a fixed list so a menu rendered into innerHTML
+// works without being registered anywhere.
+function openMenu(menu) {
+  document.querySelectorAll('.proctor-menu').forEach((el) => {
+    const open = el === menu;
+    el.querySelector('.proctor-menu__toggle')?.setAttribute('aria-expanded', String(open));
+    const panel = el.querySelector('.proctor-menu__panel');
+    if (panel) panel.hidden = !open;
   });
 }
 
+function menuByName(name) {
+  return document.querySelector(`.proctor-menu[data-menu="${name}"]`);
+}
+
+function openMenuIsVisible() {
+  return [...document.querySelectorAll('.proctor-menu__panel')].some((p) => !p.hidden);
+}
+
 function toggleFacet(filter, key, value) {
+  if (key === 'noted') { filter.noted = !filter.noted; return; }
   const list = filter[key];
   if (!list) return;
   const at = list.indexOf(value);
@@ -556,6 +591,71 @@ function moveReviewCursor(delta) {
   renderReview();
   const el = document.querySelector('.proctor-review-item--current');
   if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/** What Review is currently showing: the test, and the questions surviving its
+ *  filter. Both downloads export that slice, matching what Export PDF prints. */
+function reviewDoc() {
+  const entry = getTest(review.testId);
+  if (!entry) return null;
+  const test = entry.doc || entry;
+  return { test, questions: test.questions.filter((q) => matchesFilter(q, review.filter)) };
+}
+
+function exportName(test, ext) {
+  const slug = test.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  return `proctor-${slug}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+}
+
+// ── Source editor ────────────────────────────────────────────
+
+let editingId = null;
+
+function openEditor(id) {
+  const entry = id ? state.tests[id] : null;
+  if (!entry) {
+    // Samples live in memory and reload from data/ on every visit, so an edit
+    // to one could not persist. Say so instead of opening an editor that lies.
+    showToast('Samples cannot be edited — load your own copy first');
+    return;
+  }
+  editingId = id;
+  $('editInput').value = JSON.stringify(entry.doc, null, 2);
+  $('editError').hidden = true;
+  const running = state.session && !state.session.done && state.session.testId === id;
+  $('editNote').textContent = running
+    ? 'Saving replaces the test and discards the run you have in progress. Notes and history are kept.'
+    : 'Notes, per-question stats and run history follow the question ids — reordering questions without explicit "id" fields moves the notes with the position, not the question.';
+  $('editNote').classList.toggle('proctor-edit-note--warn', !!running);
+  openModal('editModal');
+}
+
+function saveEditor() {
+  if (!editingId) return;
+  const result = parseTest($('editInput').value);
+  if (result.error) {
+    $('editError').textContent = result.error;
+    $('editError').hidden = false;
+    return;
+  }
+  // A run holds indexes into the old question list; keeping it after an edit
+  // would answer the wrong questions.
+  if (state.session && !state.session.done && state.session.testId === editingId) {
+    stopTimer();
+    state.session = null;
+  }
+  updateTest(editingId, result.test);
+  Object.entries(result.notes || {}).forEach(([qid, text]) => saveNote(editingId, qid, text));
+  closeModals();
+  renderLibrary();
+  if (review.testId === editingId && !$('view-review').hidden) {
+    review.cursor = 0;
+    review.page = 0;
+    resetReviewFilter();
+    renderReview();
+  }
+  showToast('Saved — notes and history kept');
+  editingId = null;
 }
 
 function openNoteEditor(view) {
@@ -633,6 +733,9 @@ function onKey(e) {
   }
   const s = state.session;
   if (!s || $('view-runner').hidden) return;
+  // A note is prose: every key belongs to it, Enter included. The fill-in input
+  // is the one field where Enter still means "check this answer".
+  if (e.target.closest('.proctor-note')) return;
   const typing = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
   if (typing && e.key !== 'Enter') return;
 

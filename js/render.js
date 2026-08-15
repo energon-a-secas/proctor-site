@@ -58,6 +58,7 @@ export function matchesFilter(q, filter) {
  *  read backwards in a menu. `when` keeps an option out of the list entirely
  *  when the test has nothing for it to act on. */
 export const VISIBILITY = [
+  { key: 'showPrompt', label: 'Question text', hint: 'off leaves the number, tags and answers — a compact key' },
   { key: 'showAnswers', label: 'Answer key', hint: 'the check mark on the correct option' },
   { key: 'showWhy', label: 'Explanations', hint: 'the "Why" under each question' },
   { key: 'showWrong', label: 'Wrong options', hint: 'off leaves only the correct one' },
@@ -128,8 +129,10 @@ export function renderLibrary() {
     timeLimit: s.timeLimitMinutes,
   }, { sample: true })).join('') || '<p class="proctor-empty">Samples failed to load — serve the site over HTTP.</p>';
 
-  // Newest first: the test you just imported is the first card in the rail.
-  const saved = Object.values(state.tests).sort((a, b) => b.addedAt - a.addedAt);
+  // Newest first, counting an edit as recent — the test you just imported or
+  // just fixed is the first card in the rail.
+  const freshness = (t) => Math.max(t.addedAt || 0, t.updatedAt || 0);
+  const saved = Object.values(state.tests).sort((a, b) => freshness(b) - freshness(a));
   $('savedSection').hidden = saved.length === 0 && !state.session;
   $('savedCount').textContent = saved.length > 1 ? `${saved.length} loaded · newest first` : '';
   let html = saved.map((t) => testCard({ ...t, timeLimit: t.doc.timeLimitMinutes })).join('');
@@ -242,6 +245,14 @@ export function renderQuestion() {
     delete scenario.dataset.domain;
   }
   $('questionPrompt').innerHTML = mdBlock(q.prompt);
+
+  // Notes are personal state; embed runs write nothing, so they have none.
+  const noteHost = $('questionNote');
+  noteHost.hidden = state.embed;
+  if (!state.embed && noteHost.dataset.qid !== q.id) {
+    noteHost.dataset.qid = q.id;
+    noteHost.innerHTML = noteBlock(s.testId, q.id, { label: 'Note a thought while it is fresh' });
+  }
   $('flagBtn').setAttribute('aria-pressed', String(!!s.flags[s.pos]));
   $('flagBtn').classList.toggle('proctor-flagged', !!s.flags[s.pos]);
 
@@ -328,6 +339,22 @@ export function renderPalette() {
   }).join('');
 }
 
+/** A note on one question: rendered markdown you click to edit. The same block
+ *  in every view, so a thought written mid-run is the same note you read in
+ *  Review. Carries its own test+question id so one delegated handler serves all
+ *  three. */
+export function noteBlock(testId, qid, { label = 'Add a note — markdown works here' } = {}) {
+  const note = getNote(testId, qid);
+  return `
+    <div class="proctor-note" data-note-test="${escHtml(testId)}" data-note-qid="${escHtml(qid)}">
+      <div class="proctor-note-view proctor-md ${note ? '' : 'proctor-note-view--empty'}"
+           role="button" tabindex="0" title="Click to edit — markdown works here">${note ? mdBlock(note) : label}</div>
+      <textarea class="proctor-note-input" rows="3" placeholder="Your note (markdown works)"
+                aria-label="Note for this question" hidden>${escHtml(note)}</textarea>
+      <div class="proctor-note-print proctor-md">${mdBlock(note)}</div>
+    </div>`;
+}
+
 // ── Results ──────────────────────────────────────────────────
 
 /** Score bars for one breakdown: [[name, { correct, total }], …]. */
@@ -383,6 +410,7 @@ export function renderResults() {
           <p class="proctor-review__line">${correct ? '✓' : '✗'} Your answer: <strong>${mdInline(responseText(q, resp))}</strong></p>
           ${correct ? '' : `<p class="proctor-review__line">Correct answer: <strong>${mdInline(correctText(q))}</strong></p>`}
           ${q.explanation ? `<div class="proctor-review__explanation proctor-md">${mdBlock(q.explanation)}</div>` : ''}
+          ${state.embed ? '' : noteBlock(s.testId, q.id, { label: 'Note what tripped you up' })}
         </div>`;
     }).join('')}`;
 }
@@ -540,11 +568,11 @@ export const review = {
   cursor: 0,            // index into the filtered list — what the arrow keys move
   perPage: 10,          // resolved for this bank; events.js reads it to flip pages
   visibleCount: 0,
-  filter: { domain: [], subdomain: [], category: [] },
+  filter: { domain: [], subdomain: [], category: [], noted: false },
 };
 
 export function resetReviewFilter() {
-  review.filter = { domain: [], subdomain: [], category: [] };
+  review.filter = { domain: [], subdomain: [], category: [], noted: false };
   review.cursor = 0;
 }
 
@@ -631,22 +659,95 @@ export function renderVisibilityMenu(test) {
   })).join('');
 }
 
+/** The test as a document you can reload, with your notes folded in as a `note`
+ *  field per question. Notes never ride in a share link — that is someone
+ *  else's copy — but they belong in the file you keep. */
+export function testWithNotes(testId, test) {
+  return {
+    ...test,
+    questions: test.questions.map((q) => {
+      const note = getNote(testId, q.id);
+      return note ? { ...q, note } : { ...q };
+    }),
+  };
+}
+
+/** The same document as readable Markdown: answer key, explanations, notes,
+ *  grouped under the domain headings with their scenario. */
+export function testAsMarkdown(testId, test, questions) {
+  const out = [`# ${test.title}`];
+  if (test.description) out.push('', `_${test.description}_`);
+  let lastDomain = null;
+  questions.forEach((q, i) => {
+    const info = domainInfo(test, q.domain);
+    if (info && info.name !== lastDomain) {
+      out.push('', `## ${info.name}`);
+      if (info.description) out.push('', info.description);
+      lastDomain = info.name;
+    }
+    const tags = [q.subdomain, q.category].filter(Boolean).join(' · ');
+    out.push('', `### ${i + 1}. ${q.prompt.replace(/\n/g, '\n')}`);
+    if (tags) out.push('', `_${tags}_`);
+    if (q.type === 'fill') {
+      out.push('', `- Accepted: ${q.accept.join(' / ')}`);
+    } else if (q.type === 'truefalse') {
+      out.push('', `- ${q.answer ? '**True**' : 'True'}`, `- ${q.answer ? 'False' : '**False**'}`);
+    } else {
+      const correct = q.type === 'single' ? [q.answer] : q.answers;
+      out.push('', ...q.options.map((o, oi) => `- ${correct.includes(oi) ? `**${o}** ✓` : o}`));
+    }
+    if (q.explanation) out.push('', `> ${q.explanation.replace(/\n/g, '\n> ')}`);
+    const note = getNote(testId, q.id);
+    if (note) out.push('', `**Note:** ${note.replace(/\n/g, '\n')}`);
+  });
+  return out.join('\n') + '\n';
+}
+
+const GAP = Symbol('pager gap');
+
+/** Page buttons for a bank of any size: first, last, the current page and its
+ *  neighbours, with gaps between. Twenty numbered buttons is not navigation. */
+export function pagerSlots(pages, current, window = 1) {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i);
+  const keep = new Set([0, pages - 1, current]);
+  for (let d = 1; d <= window; d++) { keep.add(current - d); keep.add(current + d); }
+  const shown = [...keep].filter((p) => p >= 0 && p < pages).sort((a, b) => a - b);
+  const out = [];
+  shown.forEach((p, i) => {
+    if (i > 0 && p - shown[i - 1] > 1) out.push(GAP);
+    out.push(p);
+  });
+  return out;
+}
+
 export function renderReview() {
   const entry = getTest(review.testId);
   if (!entry) return;
   const test = entry.doc || entry;
-  const { showAnswers, showWhy, showNotes, showTags, showScenario } = state.review;
+  const { showPrompt, showAnswers, showWhy, showNotes, showTags, showScenario } = state.review;
   const total = test.questions.length;
 
+  // "Noted" is a filter, not a facet: it comes from what you wrote, not from
+  // the test. It appears only once there is something to come back to.
+  const noted = test.questions.filter((q) => getNote(review.testId, q.id)).length;
   const facets = usedFacets(test);
-  $('reviewFacets').hidden = facets.length === 0;
-  $('reviewFacets').innerHTML = facets.length ? facetFilterHtml(test, review.filter) : '';
+  const notedRow = noted ? `
+    <div class="proctor-facet-row">
+      <span class="proctor-facet-row__label">Yours</span>
+      <div class="proctor-facet-row__chips">
+        <button type="button" class="proctor-facet-chip ${review.filter.noted ? 'proctor-facet-chip--on' : ''}"
+                data-facet="noted" data-value="1" aria-pressed="${!!review.filter.noted}">Noted (${noted})</button>
+      </div>
+    </div>` : '';
+  $('reviewFacets').hidden = facets.length === 0 && !noted;
+  $('reviewFacets').innerHTML = (facets.length ? facetFilterHtml(test, review.filter) : '') + notedRow;
 
   // Filtering happens before pagination, so "Export PDF" prints the slice you
   // selected — off-page items stay in the DOM, filtered-out ones do not.
   const visible = test.questions
     .map((q, i) => ({ q, i }))
-    .filter(({ q }) => matchesFilter(q, review.filter));
+    .filter(({ q }) => matchesFilter(q, review.filter))
+    .filter(({ q }) => !review.filter.noted || getNote(review.testId, q.id));
 
   const steps = perPageSteps(visible.length);
   const perPage = resolvePerPage(state.review.perPage, steps);
@@ -702,23 +803,19 @@ export function renderReview() {
           ${showTags ? tagChips(q) : ''}
           <span class="proctor-review-item__type">${q.type}</span>
         </div>
-        <div class="proctor-review-item__prompt proctor-md">${mdBlock(q.prompt)}</div>
+        ${showPrompt ? `<div class="proctor-review-item__prompt proctor-md">${mdBlock(q.prompt)}</div>` : ''}
         <div class="proctor-review-opts">${reviewOptionRows(q)}</div>
         ${showWhy && q.explanation ? `<div class="proctor-review-item__why proctor-md"><strong>Why:</strong> ${mdBlock(q.explanation)}</div>` : ''}
-        ${showNotes ? `
-          <div class="proctor-review-note">
-            <div class="proctor-note-view proctor-md ${note ? '' : 'proctor-note-view--empty'}"
-                 role="button" tabindex="0" title="Click to edit — markdown works here">${note ? mdBlock(note) : 'Add a note — markdown works here'}</div>
-            <textarea class="proctor-note-input" rows="3" placeholder="Your note for this question (markdown works)"
-                      aria-label="Note for question ${i + 1}" hidden>${escHtml(note)}</textarea>
-            <div class="proctor-note-print proctor-md">${mdBlock(note)}</div>
-          </div>` : (note ? `<div class="proctor-note-print proctor-note-print--always proctor-md">${mdBlock(note)}</div>` : '')}
+        ${showNotes
+          ? `<div class="proctor-review-note">${noteBlock(review.testId, q.id)}</div>`
+          : (note ? `<div class="proctor-note-print proctor-note-print--always proctor-md">${mdBlock(note)}</div>` : '')}
       </div>`;
   }).join('');
 
   $('reviewPager').innerHTML = pages <= 1 ? '' : `
     <button class="btn btn--ghost btn--sm" data-page="prev" ${review.page === 0 ? 'disabled' : ''}>Prev</button>
-    ${Array.from({ length: pages }, (_, p) => `
-      <button class="proctor-pager__num ${p === review.page ? 'proctor-pager__num--current' : ''}" data-page="${p}">${p + 1}</button>`).join('')}
+    ${pagerSlots(pages, review.page).map((p) => (p === GAP
+      ? '<span class="proctor-pager__gap" aria-hidden="true">…</span>'
+      : `<button class="proctor-pager__num ${p === review.page ? 'proctor-pager__num--current' : ''}" data-page="${p}">${p + 1}</button>`)).join('')}
     <button class="btn btn--ghost btn--sm" data-page="next" ${review.page === pages - 1 ? 'disabled' : ''}>Next</button>`;
 }

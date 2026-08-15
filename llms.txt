@@ -56,7 +56,13 @@ Question fields:
 - points (number, default 1) — weight in the final score
 - ensure (boolean, default false) — always included when the user runs a
   random slice of the test ("Draw N questions"); use it for must-know items
-- id (string, optional) — auto-assigned q1..qN when omitted
+- id (string, optional) — auto-assigned q1..qN when omitted. Set explicit ids on
+  a bank you expect to edit: notes and per-question stats are keyed by id, so
+  reordering questions without them moves a note to whatever now sits in that
+  position.
+- note (string, optional) — a personal annotation. Written by Proctor's JSON
+  export, and lifted back out on import into the reader's own notes; it is not
+  part of the test and never travels in a share link.
 
 Recommendations for generated tests: 10-20 questions, mix the four types, give
 every question an explanation and a category, keep options plausible (the wrong
@@ -136,18 +142,39 @@ The Review button (also the third card in the mode picker) renders the entire
 test at once: answer key with the ✓ option, the explanation under every question,
 personal notes (markdown, rendered in place — click a note to edit), and a
 Per page dropdown whose steps are sized to the bank (never an option larger than
-the test). A "Visible" menu holds every show/hide switch — answer key,
-explanations, wrong options, notes, tags, scenario — with a badge counting what
-is hidden; the facet chips above the list filter it. Left/Right arrows walk the
+the test). A "Visible" menu holds every show/hide switch — question text,
+answer key, explanations, wrong options, notes, tags, scenario — with a badge
+counting what is hidden. Hiding the question text leaves the number, tags and
+answers: a compact key, or a reverse-recall drill where you infer the question
+from its options; the facet chips above the list filter it. Left/Right arrows walk the
 list one question at a time and turn the page when they reach the end of one;
 Home/End jump to the first and last.
 
-Export PDF goes through the browser's print dialog and prints every page, not
-just the one on screen — but it does respect the facet filter and the Visible
-switches, so an answer sheet, a blank practice sheet, and one domain on its own
-are all the same button. Copy share link puts the whole test in a #t=<base64url(JSON)>
-URL: no server, no account, the link is the data. Copy embed code produces the
-iframe snippet described below.
+The Share menu holds the five ways out. Export PDF goes through the browser's
+print dialog and prints every page, not just the one on screen — but it does
+respect the facet filter and the Visible switches, so an answer sheet, a blank
+practice sheet, and one domain on its own are all the same button. Download JSON
+writes the filtered test back out with your notes folded in as `note` fields,
+which import restores. Download Markdown writes the same slice as readable text
+— domain headings with their scenario, the correct option marked, explanations,
+and your notes. Both downloads follow the facet filter but ignore the Visible
+switches, which are a reading aid: PDF is the export that mirrors the screen. Copy share link puts the test in a #t=<base64url(JSON)> URL: no
+server, no account, the link is the data — and no notes, because that copy is
+someone else's. Copy embed code produces the iframe snippet described below.
+
+Edit source opens the test's own JSON in an editor and saves it back **under the
+same id**, so notes, per-question stats and run history survive a correction
+that a remove-and-reimport would throw away. It refuses a document that does not
+parse, and discards an in-progress run on that test (whose question indexes the
+edit would invalidate) after saying so.
+
+## Notes
+
+Any question can carry a personal note, written in the runner while you sit the
+test, on the results recap, or in Review — one note per question, the same one
+in all three places, markdown, stored only in the browser. Review's "Noted (N)"
+chip filters down to the questions you annotated, which is how you come back to
+them; both downloads carry them, and share links never do.
 
 ## Loading
 

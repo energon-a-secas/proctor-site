@@ -10,11 +10,11 @@ export const state = {
   history: [],     // [{ title, mode, scorePct, at }] newest first, capped
   notes: {},       // testId -> { questionId: "personal note" }
   stats: {},       // testId -> { questionId: { seen, miss } } across every finished run
-  review: { perPage: 10, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true },
+  review: { perPage: 10, showPrompt: true, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true },
   embed: false,    // ?embed=1 iframe mode: fully in-memory, never touches storage
 };
 
-export const REVIEW_DEFAULTS = { perPage: 10, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true };
+export const REVIEW_DEFAULTS = { perPage: 10, showPrompt: true, showAnswers: true, showWhy: true, showWrong: true, showNotes: false, showTags: true, showScenario: true };
 
 export function saveState() {
   if (state.embed) return;
@@ -54,8 +54,13 @@ export function testId(doc) {
   return `${slug}-${(h >>> 0).toString(36)}`;
 }
 
-export function addTest(doc, source) {
+/** `notes` is the map lifted off an imported document by the parser: an export
+ *  of yours, coming home with its annotations. */
+export function addTest(doc, source, notes) {
   const id = testId(doc);
+  if (notes && Object.keys(notes).length) {
+    state.notes[id] = { ...(state.notes[id] || {}), ...notes };
+  }
   state.tests[id] = {
     id,
     title: doc.title,
@@ -68,6 +73,26 @@ export function addTest(doc, source) {
   };
   saveState();
   return id;
+}
+
+/** Replace a saved test's document **under its existing id**. The id is what
+ *  notes, per-question stats and history entries are keyed by, so re-importing
+ *  a corrected file would orphan all three — editing in place is the only way
+ *  a fix keeps its record. */
+export function updateTest(id, doc) {
+  const entry = state.tests[id];
+  if (!entry) return false;
+  state.tests[id] = {
+    ...entry,
+    title: doc.title,
+    description: doc.description,
+    category: doc.category,
+    count: doc.questions.length,
+    updatedAt: Date.now(),
+    doc,
+  };
+  saveState();
+  return true;
 }
 
 export function removeTest(id) {

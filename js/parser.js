@@ -259,6 +259,16 @@ export function normalizeTest(doc) {
 
   if (errors.length) return { error: errors.slice(0, 8).join('\n') + (errors.length > 8 ? `\n…and ${errors.length - 8} more` : '') };
 
+  // A `note` on a question is the author's *own* annotation, written by our JSON
+  // export. It is lifted out of the document rather than kept on it: the doc is
+  // what a share link and the content-hashed id are built from, and personal
+  // notes must change neither.
+  const notes = {};
+  rawQs.forEach((raw, i) => {
+    const text = raw && typeof raw === 'object' && raw.note ? String(raw.note).trim() : '';
+    if (text && questions[i]) notes[questions[i].id] = text;
+  });
+
   // Domains: declared ones keep their order and descriptions; any domain a
   // question names without declaring is registered on first appearance, so the
   // facet filters work whether or not the author wrote the registry.
@@ -275,6 +285,7 @@ export function normalizeTest(doc) {
   });
 
   return {
+    notes,
     test: {
       title,
       description: doc.description ? String(doc.description).trim() : null,
