@@ -1,5 +1,15 @@
 // ── Shared utilities ─────────────────────────────────────────
-// Small, pure helper functions used across multiple modules.
+// The generic helpers live in the DOM Kit (js/neorgon-dom.js, vendored from
+// packages/neorgon-ui/dom/). They are re-exported here so every existing
+// `import { escHtml } from './utils.js'` keeps working untouched.
+//
+// Do not edit js/neorgon-dom.js. Edit the canonical source and run
+// packages/neorgon-ui/sync-dom.sh.
+
+import { escHtml, showToast as toast, copyText as kitCopy, downloadText }
+  from './neorgon-dom.js';
+
+export { escHtml };
 
 /** Cached element lookup by ID. */
 const _els = {};
@@ -7,37 +17,12 @@ export function $(id) {
   return _els[id] || (_els[id] = document.getElementById(id));
 }
 
-/** Escape HTML special characters. */
-export function escHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** Show a temporary toast notification. */
-let _toastTimer = null;
+/** This site's toast uses its own class and a longer dwell. */
 export function showToast(msg) {
-  let el = document.getElementById('app-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'app-toast';
-    el.className = 'toast';
-    document.body.appendChild(el);
-  }
-  // Announced by screen readers. Without these the toast is
-  // invisible to anyone not looking at that corner of the screen.
-  el.setAttribute('role', 'status');
-  el.setAttribute('aria-live', 'polite');
-  el.textContent = msg;
-  el.classList.add('toast--visible');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('toast--visible'), 2600);
+  return toast(msg, { visibleClass: 'toast--visible', duration: 2600 });
 }
 
-/** Fisher-Yates shuffle — returns a new array. */
+/** Fisher-Yates shuffle, returns a new array. */
 export function shuffled(arr) {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
@@ -49,22 +34,12 @@ export function shuffled(arr) {
 
 /** Copy text to the clipboard, with a toast either way. */
 export async function copyText(text, label = 'Copied') {
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast(label);
-  } catch {
-    showToast('Copy failed — select and copy manually');
-  }
+  showToast(await kitCopy(text) ? label : 'Copy failed, select and copy manually');
 }
 
 /** Trigger a client-side file download. */
 export function downloadFile(name, text, mime = 'text/plain') {
-  const url = URL.createObjectURL(new Blob([text], { type: mime }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadText(text, name, mime);
 }
 
 /** Base64url helpers for #t= share links (UTF-8 safe). */
