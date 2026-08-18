@@ -20,3 +20,10 @@ package-lock.json
 
 # ── Task-skill working notes (internal, repo is public) ───────────────────────
 .forge/
+
+# ── Neorgon base (enforced by smoke check 20) ─────────────────────────────────
+!.env.example
+__pycache__/
+*.py[cod]
+skills-archived/
+*.log
