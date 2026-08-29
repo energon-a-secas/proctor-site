@@ -28,8 +28,8 @@ Rules:
 - Give every question an "explanation" written as feedback for a wrong answer.
 - Group questions with "domain" (blueprint section or scenario) and "subdomain" (the
   split inside it). Use "category" for a free topic tag.
-- Shared context — a scenario, a system description, a dataset every question refers
-  to — goes in that domain's "description" in the top-level "domains" list, written
+- Shared context: a scenario, a system description, a dataset every question refers
+  to: goes in that domain's "description" in the top-level "domains" list, written
   ONCE. Never repeat it at the start of each "prompt": Proctor shows the description
   itself, and a repeated preamble is duplicated on every screen.
 - Each "prompt" contains only what that question asks.
@@ -97,7 +97,7 @@ function startSession(id, mode, { shuffleQ, shuffleO, onlyIdxs, drawCount, timeL
   shownAt = Date.now();
   if (state.session.timeLimitS) {
     startTimer(state.session.timeLimitS, renderTimer, () => {
-      showToast('Time is up — submitting');
+      showToast('Time is up: submitting');
       finishSession();
     });
   }
@@ -148,7 +148,7 @@ function resumeSession() {
     // Resume budget: original limit minus time already spent before the reload.
     const spent = Math.round((Date.now() - s.startedAt) / 1000);
     const left = Math.max(30, s.timeLimitS - spent);
-    startTimer(left, renderTimer, () => { showToast('Time is up — submitting'); finishSession(); });
+    startTimer(left, renderTimer, () => { showToast('Time is up: submitting'); finishSession(); });
   }
 }
 
@@ -334,7 +334,7 @@ export function initEvents() {
     if (action === 'share') {
       const t = state.tests[id];
       const encoded = b64urlEncode(JSON.stringify(t.doc));
-      if (encoded.length > 12000) { showToast('Too big to share as a link — send the file instead'); return; }
+      if (encoded.length > 12000) { showToast('Too big to share as a link: send the file instead'); return; }
       copyText(`${location.origin}${location.pathname}#t=${encoded}`, 'Share link copied');
     }
   });
@@ -417,7 +417,7 @@ export function initEvents() {
   });
 
   // Format view
-  $('copyPromptBtn').addEventListener('click', () => copyText(LLM_PROMPT, 'Prompt copied — add your topic'));
+  $('copyPromptBtn').addEventListener('click', () => copyText(LLM_PROMPT, 'Prompt copied: add your topic'));
   $('copySchemaBtn').addEventListener('click', () => copyText(FORMAT_EXAMPLE, 'Example JSON copied'));
   $('backFromFormatBtn').addEventListener('click', () => { showView('library'); });
 
@@ -470,7 +470,7 @@ export function initEvents() {
     downloadFile(exportName(doc.test, 'json'), JSON.stringify(testWithNotes(review.testId, {
       ...doc.test, questions: doc.questions,
     }), null, 2), 'application/json');
-    showToast('JSON downloaded — notes included');
+    showToast('JSON downloaded: notes included');
   });
   $('reviewMdBtn').addEventListener('click', () => {
     openMenu(null);
@@ -489,8 +489,8 @@ export function initEvents() {
     const entry = getTest(review.testId);
     if (!entry) return;
     const encoded = b64urlEncode(JSON.stringify(entry.doc || entry));
-    if (encoded.length > 12000) { showToast('Too big to share as a link — send the file instead'); return; }
-    copyText(`${location.origin}${location.pathname}#t=${encoded}`, 'Share link copied — the test travels inside it');
+    if (encoded.length > 12000) { showToast('Too big to share as a link: send the file instead'); return; }
+    copyText(`${location.origin}${location.pathname}#t=${encoded}`, 'Share link copied: the test travels inside it');
   });
   $('reviewBackBtn').addEventListener('click', () => { showView('library'); renderLibrary(); });
   $('reviewEmbedBtn').addEventListener('click', () => {
@@ -499,10 +499,10 @@ export function initEvents() {
     if (!entry) return;
     const doc = entry.doc || entry;
     const encoded = b64urlEncode(JSON.stringify(doc));
-    if (encoded.length > 12000) { showToast('Too big to embed via URL — host the file and use ?src= instead'); return; }
+    if (encoded.length > 12000) { showToast('Too big to embed via URL: host the file and use ?src= instead'); return; }
     const src = `${location.origin}${location.pathname}?embed=1&mode=study#t=${encoded}`;
-    const snippet = `<iframe src="${src}"\n  width="100%" height="640" loading="lazy" style="border:0;border-radius:12px"\n  title="${doc.title.replace(/"/g, '&quot;')} — Proctor"></iframe>`;
-    copyText(snippet, 'Embed code copied — paste it into any page');
+    const snippet = `<iframe src="${src}"\n  width="100%" height="640" loading="lazy" style="border:0;border-radius:12px"\n  title="${doc.title.replace(/"/g, '&quot;')}, Proctor"></iframe>`;
+    copyText(snippet, 'Embed code copied: paste it into any page');
   });
   // Notes: one implementation for the runner, the results recap, and Review.
   // Each block carries its own test and question id, so these listeners live on
@@ -539,7 +539,7 @@ export function initEvents() {
     const view = block.querySelector('.proctor-note-view');
     const print = block.querySelector('.proctor-note-print');
     view.classList.toggle('proctor-note-view--empty', !text.trim());
-    view.innerHTML = text.trim() ? mdBlock(text) : 'Add a note — markdown works here';
+    view.innerHTML = text.trim() ? mdBlock(text) : 'Add a note: markdown works here';
     if (print) print.innerHTML = mdBlock(text);
     view.hidden = false;
     e.target.hidden = true;
@@ -616,7 +616,7 @@ function openEditor(id) {
   if (!entry) {
     // Samples live in memory and reload from data/ on every visit, so an edit
     // to one could not persist. Say so instead of opening an editor that lies.
-    showToast('Samples cannot be edited — load your own copy first');
+    showToast('Samples cannot be edited: load your own copy first');
     return;
   }
   editingId = id;
@@ -625,7 +625,7 @@ function openEditor(id) {
   const running = state.session && !state.session.done && state.session.testId === id;
   $('editNote').textContent = running
     ? 'Saving replaces the test and discards the run you have in progress. Notes and history are kept.'
-    : 'Notes, per-question stats and run history follow the question ids — reordering questions without explicit "id" fields moves the notes with the position, not the question.';
+    : 'Notes, per-question stats and run history follow the question ids, reordering questions without explicit "id" fields moves the notes with the position, not the question.';
   $('editNote').classList.toggle('proctor-edit-note--warn', !!running);
   openModal('editModal');
 }
@@ -654,7 +654,7 @@ function saveEditor() {
     resetReviewFilter();
     renderReview();
   }
-  showToast('Saved — notes and history kept');
+  showToast('Saved: notes and history kept');
   editingId = null;
 }
 

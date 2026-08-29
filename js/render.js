@@ -58,7 +58,7 @@ export function matchesFilter(q, filter) {
  *  read backwards in a menu. `when` keeps an option out of the list entirely
  *  when the test has nothing for it to act on. */
 export const VISIBILITY = [
-  { key: 'showPrompt', label: 'Question text', hint: 'off leaves the number, tags and answers — a compact key' },
+  { key: 'showPrompt', label: 'Question text', hint: 'off leaves the number, tags and answers: a compact key' },
   { key: 'showAnswers', label: 'Answer key', hint: 'the check mark on the correct option' },
   { key: 'showWhy', label: 'Explanations', hint: 'the "Why" under each question' },
   { key: 'showWrong', label: 'Wrong options', hint: 'off leaves only the correct one' },
@@ -127,7 +127,7 @@ export function renderLibrary() {
     id: s.id, title: s.title, description: s.description,
     category: s.category, count: s.questions.length,
     timeLimit: s.timeLimitMinutes,
-  }, { sample: true })).join('') || '<p class="proctor-empty">Samples failed to load — serve the site over HTTP.</p>';
+  }, { sample: true })).join('') || '<p class="proctor-empty">Samples failed to load, serve the site over HTTP.</p>';
 
   // Newest first, counting an edit as recent — the test you just imported or
   // just fixed is the first card in the rail.
@@ -309,7 +309,7 @@ export function renderQuestion() {
     const correct = gradeQuestion(q, resp);
     fb.hidden = false;
     fb.className = `proctor-feedback ${correct ? 'proctor-feedback--correct' : 'proctor-feedback--wrong'}`;
-    $('feedbackVerdict').textContent = correct ? 'Correct' : `Not quite — the answer is: ${correctText(q)}`;
+    $('feedbackVerdict').textContent = correct ? 'Correct' : `Not quite: the answer is: ${correctText(q)}`;
     $('feedbackExplanation').innerHTML = mdBlock(q.explanation || '');
     $('feedbackExplanation').hidden = !q.explanation;
   } else {
@@ -343,12 +343,12 @@ export function renderPalette() {
  *  in every view, so a thought written mid-run is the same note you read in
  *  Review. Carries its own test+question id so one delegated handler serves all
  *  three. */
-export function noteBlock(testId, qid, { label = 'Add a note — markdown works here' } = {}) {
+export function noteBlock(testId, qid, { label = 'Add a note: markdown works here' } = {}) {
   const note = getNote(testId, qid);
   return `
     <div class="proctor-note" data-note-test="${escHtml(testId)}" data-note-qid="${escHtml(qid)}">
       <div class="proctor-note-view proctor-md ${note ? '' : 'proctor-note-view--empty'}"
-           role="button" tabindex="0" title="Click to edit — markdown works here">${note ? mdBlock(note) : label}</div>
+           role="button" tabindex="0" title="Click to edit, markdown works here">${note ? mdBlock(note) : label}</div>
       <textarea class="proctor-note-input" rows="3" placeholder="Your note (markdown works)"
                 aria-label="Note for this question" hidden>${escHtml(note)}</textarea>
       <div class="proctor-note-print proctor-md">${mdBlock(note)}</div>
@@ -442,7 +442,7 @@ function relDate(ts) {
 export function renderProgress() {
   const host = $('progressHost');
   if (!state.history.length) {
-    host.innerHTML = '<div class="card proctor-empty">Nothing here yet — finish a study or simulator run and it lands here.</div>';
+    host.innerHTML = '<div class="card proctor-empty">Nothing here yet, finish a study or simulator run and it lands here.</div>';
     return;
   }
 
@@ -508,7 +508,7 @@ export const FORMAT_EXAMPLE = `{
   "domains": [
     {
       "name": "Filesystem",
-      "description": "Shared setup for these questions, written ONCE here — never repeated in a prompt. You are on a Linux box in /tmp/work with a docs/ directory.",
+      "description": "Shared setup for these questions, written ONCE here, never repeated in a prompt. You are on a Linux box in /tmp/work with a docs/ directory.",
       "subdomains": ["Navigation", "Creating files"]
     },
     { "name": "Version control" }

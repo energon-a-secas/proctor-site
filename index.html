@@ -24,10 +24,10 @@
   <meta name="neo-version" content="1.6.0">
   <meta name="neo-updated" content="Aug 2026">
   <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
-  <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
+  <!-- Fleet design tokens: canonical, do not redeclare locally (PROJECTS.md section 5) -->
   <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/styles/base.css">
   <link rel="stylesheet" href="css/style.css">
-  <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css — the kit owns the header. -->
+  <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css. The kit owns the header. -->
   <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
   <link rel="stylesheet" href="css/neorgon-header.css">
   <link rel="stylesheet" href="css/neorgon-themes.css">
@@ -97,7 +97,7 @@
           <p class="section__lead">
             Drop a JSON or YAML file with questions, answers, and corrections.
             Study it with instant feedback, or sit it as a timed simulation.
-            Ask any LLM to write one for you — the <a href="#" data-goto="format">format</a> fits in a prompt.
+            Ask any LLM to write one for you: the <a href="#" data-goto="format">format</a> fits in a prompt.
           </p>
         </div>
 
@@ -115,7 +115,7 @@
             <path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
           </svg>
           <p class="proctor-dropzone__line"><strong>Drop a test file</strong> or click to browse</p>
-          <p class="proctor-dropzone__hint">.json · .yaml · .csv · Aiken · GIFT — or <button type="button" class="proctor-link" id="pasteBtn">paste it</button></p>
+          <p class="proctor-dropzone__hint">.json · .yaml · .csv · Aiken · GIFT, or <button type="button" class="proctor-link" id="pasteBtn">paste it</button></p>
           <input type="file" id="fileInput" accept=".json,.yaml,.yml,.txt,.csv,.gift,application/json,text/csv" hidden>
         </div>
 
@@ -188,7 +188,7 @@
       <section class="section" id="view-progress" aria-labelledby="progress-title" hidden>
         <div class="section__titles">
           <h2 class="section__title" id="progress-title">Progress</h2>
-          <p class="section__lead">Every finished run lands here — score trends per test, and your recent history. Stored only in this browser.</p>
+          <p class="section__lead">Every finished run lands here, score trends per test, and your recent history. Stored only in this browser.</p>
         </div>
         <div class="stack" id="progressHost"></div>
       </section>
@@ -212,20 +212,20 @@
         <div class="card">
           <h3 class="proctor-subhead">Field notes</h3>
           <ul class="proctor-fieldnotes">
-            <li><code>type</code> — <code>single</code> (one correct option), <code>multi</code> (several), <code>truefalse</code>, or <code>fill</code> (typed answer)</li>
-            <li><code>answer</code> — option index (0-based) or the option text itself; a boolean for <code>truefalse</code></li>
-            <li><code>answers</code> — array of indexes or texts, for <code>multi</code></li>
-            <li><code>accept</code> — accepted strings for <code>fill</code>, compared case-insensitively</li>
-            <li><code>explanation</code> — the correction shown after answering; write it like feedback, not a citation</li>
-            <li><code>domain</code> / <code>subdomain</code> — the blueprint grouping; chips on each question, filters before a run and in Review, and their own score breakdowns</li>
-            <li><code>domains</code> (top level) — <code>{ name, description, subdomains }</code>. The <code>description</code> is where shared scenario context goes, written <strong>once</strong>: Proctor shows it as a fold-out panel above the question, so it must not be repeated inside each <code>prompt</code></li>
-            <li><code>category</code> — free text; scores roll up per category on the results screen</li>
-            <li><code>timeLimitMinutes</code>, <code>passingScore</code> — optional, used by simulator mode</li>
+            <li><code>type</code>: <code>single</code> (one correct option), <code>multi</code> (several), <code>truefalse</code>, or <code>fill</code> (typed answer)</li>
+            <li><code>answer</code>: option index (0-based) or the option text itself; a boolean for <code>truefalse</code></li>
+            <li><code>answers</code>: array of indexes or texts, for <code>multi</code></li>
+            <li><code>accept</code>: accepted strings for <code>fill</code>, compared case-insensitively</li>
+            <li><code>explanation</code>: the correction shown after answering; write it like feedback, not a citation</li>
+            <li><code>domain</code> / <code>subdomain</code>. The blueprint grouping; chips on each question, filters before a run and in Review, and their own score breakdowns</li>
+            <li><code>domains</code> (top level): <code>{ name, description, subdomains }</code>. The <code>description</code> is where shared scenario context goes, written <strong>once</strong>: Proctor shows it as a fold-out panel above the question, so it must not be repeated inside each <code>prompt</code></li>
+            <li><code>category</code>: free text; scores roll up per category on the results screen</li>
+            <li><code>timeLimitMinutes</code>, <code>passingScore</code>, optional, used by simulator mode</li>
             <li>YAML works too: same fields, plain indentation only (no anchors, no inline maps)</li>
             <li>Markdown in <code>prompt</code>, <code>options</code>, <code>explanation</code>, and notes: <code>**bold**</code>, <code>*italic*</code>, <code>`code`</code>, fenced <code>```</code> blocks, links, lists (options: inline only)</li>
-            <li><code>ensure: true</code> — question always survives a "Draw N" random slice</li>
-            <li>Also imports Aiken and GIFT (Moodle) and CSV — header row <code>prompt,options,answer,…</code>, options <code>|</code>-separated</li>
-            <li>Embed a test anywhere: <code>?embed=1&amp;mode=study&amp;draw=N#t=…</code> in an iframe — chromeless, auto-starts, saves nothing</li>
+            <li><code>ensure: true</code>, question always survives a "Draw N" random slice</li>
+            <li>Also imports Aiken and GIFT (Moodle) and CSV, header row <code>prompt,options,answer,…</code>, options <code>|</code>-separated</li>
+            <li>Embed a test anywhere: <code>?embed=1&amp;mode=study&amp;draw=N#t=…</code> in an iframe, chromeless, auto-starts, saves nothing</li>
           </ul>
         </div>
       </section>
@@ -277,7 +277,7 @@
             <div class="proctor-menu__panel proctor-menu__panel--actions" id="reviewSharePanel" hidden>
               <button type="button" class="proctor-menu__action" id="reviewShareBtn">
                 <span class="proctor-menu__label">Copy share link</span>
-                <span class="proctor-menu__hint">the whole test rides in the URL — no server, no account</span>
+                <span class="proctor-menu__hint">the whole test rides in the URL. No server, no account</span>
               </button>
               <button type="button" class="proctor-menu__action" id="reviewEmbedBtn">
                 <span class="proctor-menu__label">Copy embed code</span>
@@ -285,11 +285,11 @@
               </button>
               <button type="button" class="proctor-menu__action" id="reviewPdfBtn">
                 <span class="proctor-menu__label">Export PDF</span>
-                <span class="proctor-menu__hint">the print dialog — every page, filters and Visible applied</span>
+                <span class="proctor-menu__hint">the print dialog. Every page, filters and Visible applied</span>
               </button>
               <button type="button" class="proctor-menu__action" id="reviewJsonBtn">
                 <span class="proctor-menu__label">Download JSON</span>
-                <span class="proctor-menu__hint">the test plus your notes — reloadable, and never in a share link</span>
+                <span class="proctor-menu__hint">the test plus your notes, reloadable, and never in a share link</span>
               </button>
               <button type="button" class="proctor-menu__action" id="reviewMdBtn">
                 <span class="proctor-menu__label">Download Markdown</span>
@@ -297,7 +297,7 @@
               </button>
             </div>
           </div>
-          <button class="btn btn--secondary btn--sm" id="reviewEditBtn" title="Edit this test's JSON in place — notes and history survive">Edit source</button>
+          <button class="btn btn--secondary btn--sm" id="reviewEditBtn" title="Edit this test's JSON in place, notes and history survive">Edit source</button>
           <button class="btn btn--ghost btn--sm" id="reviewBackBtn">Back</button>
         </div>
 
@@ -389,7 +389,7 @@
         <label class="proctor-draw" title="Random slice of the bank; questions marked ensure are always included">
           Draw <input type="number" id="drawCount" min="1" inputmode="numeric"> questions (blank = all)
         </label>
-        <label class="proctor-draw" title="Simulator countdown — blank = the test's own limit, 0 = no timer">
+        <label class="proctor-draw" title="Simulator countdown, blank = the test's own limit, 0 = no timer">
           Time limit <input type="number" id="timeLimitInput" min="0" inputmode="numeric"> min (Simulator)
         </label>
         <div class="proctor-weak-row" id="weakRow" hidden>

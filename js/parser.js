@@ -194,7 +194,7 @@ export function parseTest(text, { name } = {}) {
   if (doc && typeof doc === 'object' && !Array.isArray(doc) && !doc.title) {
     doc.title = name
       ? name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
-      : `Imported test — ${new Date().toISOString().slice(0, 10)}`;
+      : `Imported test: ${new Date().toISOString().slice(0, 10)}`;
   }
   return normalizeTest(doc);
 }
@@ -208,7 +208,7 @@ export function normalizeTest(doc) {
   if (!title) errors.push('Missing "title"');
   const rawQs = doc.questions;
   if (!Array.isArray(rawQs) || rawQs.length === 0) {
-    return { error: 'Missing "questions" — a non-empty array of question objects' };
+    return { error: 'Missing "questions": a non-empty array of question objects' };
   }
 
   const questions = rawQs.map((q, i) => {
@@ -250,7 +250,7 @@ export function normalizeTest(doc) {
       norm.answer = a;
     } else { // fill
       const accept = Array.isArray(q.accept) ? q.accept : (q.accept !== undefined ? [q.accept] : (q.answer !== undefined ? [q.answer] : []));
-      if (!accept.length) errors.push(`Q${qn}: fill needs "accept" — the list of accepted answers`);
+      if (!accept.length) errors.push(`Q${qn}: fill needs "accept". The list of accepted answers`);
       norm.accept = accept.map((a) => String(a).trim());
       norm.caseSensitive = q.caseSensitive === true;
     }

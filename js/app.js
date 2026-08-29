@@ -78,7 +78,7 @@ function importFromUrl() {
     }).catch(() => showToast('Could not fetch ?src= (CORS or network)'));
     return;
   }
-  if (EMBED) showToast('No test in the URL — pass #t= or ?src=');
+  if (EMBED) showToast('No test in the URL: pass #t= or ?src=');
 }
 
 if (EMBED) embedBoot();
